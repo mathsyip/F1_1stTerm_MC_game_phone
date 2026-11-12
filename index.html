@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Math Survivor - S1</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #050510;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+        }
+        canvas { display: block; touch-action: none; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        .pointer-events-auto { pointer-events: auto; }
+        #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 140px; height: 140px; pointer-events: auto; display: none; z-index: 20; touch-action: none; }
+        .joystick-base { width: 140px; height: 140px; background: rgba(0, 255, 255, 0.05); border: 2px solid rgba(0, 255, 255, 0.2); border-radius: 50%; position: absolute; top: 0; left: 0; }
+        .joystick-stick { width: 60px; height: 60px; background: rgba(0, 255, 255, 0.5); border-radius: 50%; position: absolute; top: 40px; left: 40px; box-shadow: 0 0 15px cyan; transition: transform 0.05s ease-out; }
+        .neon-btn { background: transparent; color: #0ff; border: 2px solid #0ff; box-shadow: 0 0 10px #0ff, inset 0 0 10px #0ff; transition: all 0.2s; text-transform: uppercase; letter-spacing: 2px; }
+        .neon-btn:hover { background: #0ff; color: #000; box-shadow: 0 0 20px #0ff, inset 0 0 20px #0ff; }
+        #exp-bar-container { width: 100%; height: 10px; background: #222; position: absolute; top: 0; left: 0; box-shadow: 0 0 10px rgba(0,255,255,0.2); }
+        #exp-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #ff0055 0%, #ffaa00 50%, #00f2fe 100%); box-shadow: 0 0 15px #ffaa00; transition: width 0.1s linear; }
+        .fade-in { animation: fadeIn 0.3s forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .pulse-text { animation: pulseText 1.5s infinite alternate; }
+        @keyframes pulseText { from { text-shadow: 0 0 10px #f0f, 0 0 20px #f0f; } to { text-shadow: 0 0 20px #f0f, 0 0 40px #f0f; } }
+        .katex { font-size: 1.15em !important; }
+        .katex-display { margin: 0.2em 0 !important; }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="joystick-zone">
+        <div class="joystick-base"></div>
+        <div class="joystick-stick" id="joystick-stick"></div>
+    </div>
+
+    <div id="ui-layer" class="flex flex-col justify-between">
+        <div class="w-full relative">
+            <div id="exp-bar-container"><div id="exp-bar"></div></div>
+            <div class="flex flex-wrap justify-between items-start px-2 pt-2 md:px-6 md:pt-5 text-white font-bold text-base md:text-xl drop-shadow-md">
+                <div class="bg-black/50 px-2 py-1 md:px-3 md:py-1 rounded border border-cyan-500/50 order-1">
+                    <span class="text-cyan-400"><span id="lbl-level">系統評級</span> <span id="ui-level">1</span></span>
+                </div>
+                
+                <div class="flex flex-col items-center gap-1 md:gap-2 order-3 w-full md:w-auto md:order-2 mt-2 md:mt-0">
+                    <div class="text-xl md:text-3xl tracking-widest text-center" id="ui-timer" style="text-shadow: 0 0 10px white;">00:00</div>
+                    <div class="flex gap-2 md:gap-3 bg-black/60 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-gray-700/80 backdrop-blur-sm pointer-events-auto">
+                        <div class="flex flex-col items-center gap-1 w-12 md:w-14">
+                            <span class="text-[10px] md:text-xs text-cyan-300">☄️ <span id="lbl-meteor" class="hidden sm:inline">流星</span></span>
+                            <div class="w-full h-1 md:h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                <div id="progress-meteor" class="h-full bg-cyan-400 w-0 transition-all duration-300 shadow-[0_0_5px_#00ffff]"></div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 w-12 md:w-14">
+                            <span class="text-[10px] md:text-xs text-fuchsia-400">⚡ <span id="lbl-lightning" class="hidden sm:inline">閃電</span></span>
+                            <div class="w-full h-1 md:h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                <div id="progress-lightning" class="h-full bg-fuchsia-500 w-0 transition-all duration-300 shadow-[0_0_5px_#f0f]"></div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 w-12 md:w-14">
+                            <span class="text-[10px] md:text-xs text-orange-400">🔥 <span id="lbl-firestorm" class="hidden sm:inline">火燒</span></span>
+                            <div class="w-full h-1 md:h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                <div id="progress-firestorm" class="h-full bg-orange-500 w-0 transition-all duration-300 shadow-[0_0_5px_#ff4500]"></div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 w-12 md:w-14">
+                            <span class="text-[10px] md:text-xs text-yellow-300">💥 <span id="lbl-shockwave" class="hidden sm:inline">衝擊波</span></span>
+                            <div class="w-full h-1 md:h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                <div id="progress-shockwave" class="h-full bg-yellow-400 w-0 transition-all duration-300 shadow-[0_0_5px_#ffee00]"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-right bg-black/50 px-2 py-1 md:px-3 md:py-1 rounded border border-red-500/50 order-2 md:order-3 pointer-events-auto">
+                    <span class="text-red-400"><span id="ui-hp">100</span> / <span id="ui-maxhp">100</span> HP</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute top-[80px] md:top-24 right-2 md:right-6 text-white text-sm md:text-lg font-mono bg-black/50 px-2 py-1 md:px-3 md:py-1 rounded border border-fuchsia-500/50" style="text-shadow: 0 0 5px #ff00ff;">
+            KILLS: <span id="ui-kills">0</span>
+        </div>
+    </div>
+
+    <div id="modal-container" class="absolute inset-0 bg-black/85 flex items-center justify-center pointer-events-auto z-50 flex-col backdrop-blur-md">
+        
+        <!-- 開始畫面 -->
+        <div id="start-screen" class="text-center p-6 md:p-8 bg-gray-900/90 border-2 border-cyan-500 rounded-xl shadow-[0_0_40px_rgba(0,255,255,0.4)] max-w-lg mx-4 max-h-[95vh] overflow-y-auto w-[90%] md:w-full">
+            <h1 id="main-title-text" class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 mb-2 leading-tight" style="filter: drop-shadow(0 0 15px cyan);">遊戲標題</h1>
+            <p id="sub-title-text" class="text-cyan-200 mb-4 md:mb-6 text-sm md:text-lg tracking-widest">GAME SUBTITLE</p>
+            <div class="text-xs md:text-sm text-gray-300 mb-6 md:mb-8 text-left bg-black/60 p-4 md:p-5 rounded-lg border border-gray-700 space-y-2">
+                <p>🕒 <strong>生存目標：</strong>生存 10 分鐘，解開知識封印。</p>
+                <p>🔫 <strong>武器系統：</strong>從粒子彈開始，答對解鎖神級武器。</p>
+                <p>⚡ <strong>心智試煉：</strong>每 5 秒強制觸發，30 秒自由挑戰 3 張卡牌。</p>
+                <p class="text-yellow-400 font-bold border-l-4 border-yellow-400 pl-2 mt-2">💥 3/3 答對滿分即可解鎖 / 升級【全屏衝擊波】！</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4 w-full">
+                <button id="btn-start-zh" class="neon-btn px-4 py-3 md:px-6 md:py-4 text-base md:text-lg font-bold rounded cursor-pointer flex-1">繁體中文</button>
+                <button id="btn-start-en" class="neon-btn px-4 py-3 md:px-6 md:py-4 text-base md:text-lg font-bold rounded cursor-pointer flex-1 !border-fuchsia-500 !text-fuchsia-400 hover:!bg-fuchsia-500 hover:!text-white shadow-[0_0_10px_#f0f,inset_0_0_10px_#f0f]">ENGLISH</button>
+            </div>
+        </div>
+
+        <!-- 試煉畫面 -->
+        <div id="levelup-screen" class="hidden text-center p-3 md:p-6 bg-gray-900/95 border-2 border-fuchsia-500 rounded-xl shadow-[0_0_50px_rgba(255,0,255,0.4)] max-w-7xl w-[98%] max-h-[95vh] overflow-y-auto relative">
+            <h2 id="lbl-quiz-title" class="text-2xl md:text-4xl font-black text-fuchsia-400 mb-1 tracking-widest pulse-text">心智試煉 LEVEL UP!</h2>
+            <p id="lbl-quiz-desc" class="text-gray-300 mb-4 text-xs md:text-base">30秒內選出正確概念步驟！三題全對可選擇特殊神技獎勵！</p>
+            
+            <div class="w-full bg-gray-800 h-3 rounded-full mb-4 overflow-hidden border border-gray-600 relative">
+                <div id="quiz-timer-bar" class="h-full bg-gradient-to-r from-fuchsia-600 to-pink-500 w-full transition-all duration-1000 ease-linear"></div>
+                <div id="quiz-timer-text" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow-md">30s</div>
+            </div>
+
+            <div id="quiz-cards-container" class="flex flex-col md:flex-row gap-4 w-full justify-center min-h-[350px]"></div>
+            
+            <!-- 滿分 3/3 獎勵選擇彈窗 -->
+            <div id="perfect-reward-overlay" class="hidden absolute inset-0 bg-black/90 rounded-xl flex flex-col items-center justify-center p-4 md:p-6 backdrop-blur-md z-30 fade-in overflow-y-auto">
+                <h3 class="text-2xl md:text-4xl font-black text-yellow-400 mb-2 drop-shadow-[0_0_15px_rgba(234,179,8,0.8)]">🎉 PERFECT! 3/3 全對獎勵 🎉</h3>
+                <p class="text-gray-200 mb-6 text-sm md:text-lg" id="lbl-perfect-desc">請選擇你的試煉回報：</p>
+                <div class="flex flex-col sm:flex-row gap-4 md:gap-6 w-full max-w-md">
+                    <button id="btn-reward-heal" class="flex-1 p-4 md:p-5 bg-gradient-to-br from-green-900/80 to-emerald-900/80 border-2 border-green-400 rounded-xl hover:scale-105 transition-transform flex flex-col items-center shadow-[0_0_20px_rgba(74,222,128,0.4)] cursor-pointer">
+                        <span class="text-3xl md:text-4xl mb-2">💖</span>
+                        <span class="text-lg md:text-xl font-bold text-green-300" id="lbl-heal-title">回復 20 生命值</span>
+                        <span class="text-[10px] md:text-xs text-green-200/80 mt-1" id="lbl-heal-sub">Restore +20 HP</span>
+                    </button>
+                    <button id="btn-reward-shockwave" class="flex-1 p-4 md:p-5 bg-gradient-to-br from-yellow-900/80 to-amber-900/80 border-2 border-yellow-400 rounded-xl hover:scale-105 transition-transform flex flex-col items-center shadow-[0_0_20px_rgba(250,204,21,0.4)] cursor-pointer">
+                        <span class="text-3xl md:text-4xl mb-2">💥</span>
+                        <span class="text-lg md:text-xl font-bold text-yellow-300" id="lbl-shockwave-title">2秒暴風衝擊波</span>
+                        <span class="text-[10px] md:text-xs text-yellow-200/80 mt-1" id="lbl-shockwave-sub">2s Continuous Wave</span>
+                    </button>
+                </div>
+            </div>
+
+            <button id="btn-continue" class="hidden neon-btn mt-4 px-8 py-2 md:px-10 md:py-3 text-base md:text-lg rounded mx-auto pointer-events-auto w-full md:w-auto border-fuchsia-500 text-fuchsia-400 hover:bg-fuchsia-500 hover:text-white shadow-[0_0_10px_#f0f,inset_0_0_10px_#f0f]">繼續戰鬥</button>
+        </div>
+
+        <!-- 遊戲結束畫面 -->
+        <div id="gameover-screen" class="hidden text-center p-6 md:p-8 bg-gray-900/95 border-2 border-red-500 rounded-xl shadow-[0_0_40px_rgba(255,0,0,0.5)] max-w-lg mx-4 w-[90%] md:w-full max-h-[95vh] overflow-y-auto">
+            <h1 class="text-4xl md:text-5xl font-black text-red-500 mb-4 drop-shadow-md" id="end-title">SYSTEM FAILURE</h1>
+            <p class="text-lg md:text-xl text-gray-300 mb-4" id="end-desc">你被實體洪流吞噬了...</p>
+            <div class="text-left text-gray-300 mb-6 md:mb-8 space-y-2 md:space-y-3 text-base md:text-lg bg-black/50 p-4 md:p-6 rounded-lg border border-gray-700">
+                <div class="flex justify-between border-b border-gray-700 pb-2"><span id="lbl-end-time">存活時間</span> <span id="end-time" class="text-white font-mono">00:00</span></div>
+                <div class="flex justify-between border-b border-gray-700 pb-2"><span id="lbl-end-kills">消滅實體</span> <span id="end-kills" class="text-white font-mono text-fuchsia-400">0</span></div>
+                <div class="flex justify-between"><span id="lbl-end-level">系統評級</span> <span id="end-level" class="text-white font-mono text-cyan-400">1</span></div>
+            </div>
+            <button id="btn-restart" class="neon-btn px-6 py-3 md:px-8 md:py-4 text-lg md:text-xl font-bold rounded cursor-pointer w-full !border-red-500 !text-red-500 hover:!bg-red-500 hover:!text-black !shadow-[0_0_10px_#f00,inset_0_0_10px_#f00]">REBOOT SYSTEM</button>
+        </div>
+    </div>
+
+<script>
+// ============================================================================
+// 💡 區塊 1：課題設定模組 (TOPIC CONFIGURATION) 
+// S1 Math Comprehensive Trainer (Step-by-Step Logic)
+// ============================================================================
+const TopicConfig = {
+    titleZh: '中一數學綜合訓練員',
+    titleEn: 'S1 MATH COMPREHENSIVE TRAINER',
+    
+    // Maintain state for chaining step-by-step logic
+    state: {
+        0: { stage: 0, sharedVars: {} }, 
+        1: { stage: 0, sharedVars: {} }, 
+        2: { stage: 0, sharedVars: {} }, 
+        3: { stage: 0, sharedVars: {} }, 
+        4: { stage: 0, sharedVars: {} }
+    },
+
+    randInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
+
+    generateSVG: function(type, vars, isEn) {
+        if (type === 'coord') {
+            return `<svg width="150" height="150" viewBox="0 0 150 150" class="mx-auto mt-1 mb-2">
+                <!-- X & Y Axis -->
+                <line x1="10" y1="75" x2="140" y2="75" stroke="#00ffff" stroke-width="2" />
+                <line x1="75" y1="10" x2="75" y2="140" stroke="#00ffff" stroke-width="2" />
+                <!-- Arrows -->
+                <polygon points="140,70 150,75 140,80" fill="#00ffff" />
+                <polygon points="70,10 75,0 80,10" fill="#00ffff" />
+                <!-- Labels -->
+                <text x="135" y="90" fill="#00ffff" font-size="14" font-weight="bold" font-family="monospace">x</text>
+                <text x="55" y="20" fill="#00ffff" font-size="14" font-weight="bold" font-family="monospace">y</text>
+                <!-- Points -->
+                <circle cx="${vars.px1}" cy="${vars.py1}" r="4" fill="#ff4500" />
+                <text x="${vars.px1}" y="${vars.py1 - 8}" fill="#ffea00" font-size="12" font-weight="bold" text-anchor="middle">A</text>
+                <circle cx="${vars.px2}" cy="${vars.py2}" r="4" fill="#ff4500" />
+                <text x="${vars.px2}" y="${vars.py2 - 8}" fill="#ffea00" font-size="12" font-weight="bold" text-anchor="middle">B</text>
+                <line x1="${vars.px1}" y1="${vars.py1}" x2="${vars.px2}" y2="${vars.py2}" stroke="#ffea00" stroke-width="2" stroke-dasharray="4,4" />
+            </svg>`;
+        }
+        return null;
+    },
+
+    generateQuestion: function(lang) {
+        const isEn = lang === 'en';
+        // 將出現概率調整為各佔 25% (0: 有向數, 1: 座標, 2: 代數, 3: 方程)
+        const type = this.randInt(0, 3);
+        let question = "", correct = "", wrongs = [], svg = null;
+        let state = this.state[type];
+
+        if (type === 0) { // Directed Numbers (有向數四則運算)
+            if (state.stage === 0) {
+                let a = this.randInt(-10, 10);
+                let b = this.randInt(-6, -2); // Negative
+                let c = this.randInt(2, 6);   // Positive
+                state.sharedVars = { a, b, c, s1: b * c };
+                question = isEn ? `\\text{Step 1: Evaluate } (${b}) \\times ${c}` : `\\text{第一步: 計算 } (${b}) \\times ${c}`;
+                correct = `${b * c}`;
+                wrongs = [`${-(b * c)}`, `${b + c}`, `${b - c}`];
+                state.stage = 1;
+            } else {
+                let { a, s1 } = state.sharedVars;
+                question = isEn ? `\\text{Step 2: Evaluate } ${a} - (${s1})` : `\\text{第二步: 計算 } ${a} - (${s1})`;
+                correct = `${a - s1}`;
+                wrongs = [`${a + s1}`, `${s1 - a}`, `${a - s1 + 2}`];
+                state.stage = 0;
+            }
+        }
+        else if (type === 1) { // Coordinate Geometry & Transformations (座標系統與變換)
+            if (state.stage === 0) {
+                let subTopic = this.randInt(0, 1); // 0: Quadrant/Distance, 1: Transformations
+                if (subTopic === 0) {
+                    let common = this.randInt(-5, 5);
+                    if (common === 0) common = 2; // avoid 0 to stay strictly in a quadrant
+                    let v1 = this.randInt(-8, -2);
+                    let v2 = this.randInt(2, 8);
+                    let isHoriz = Math.random() < 0.5;
+                    
+                    let px1 = isHoriz ? v1 : common;
+                    let py1 = isHoriz ? common : v1;
+                    let px2 = isHoriz ? v2 : common;
+                    let py2 = isHoriz ? common : v2;
+                    state.sharedVars = { subTopic, px1, py1, px2, py2, v1, v2 };
+                    
+                    question = isEn ? `\\text{Quadrant of } A(${px1}, ${py1})` : `\\text{點 } A(${px1}, ${py1}) \\text{ 的象限}`;
+                    
+                    let qRoman = (px1 > 0 && py1 > 0) ? "I" : (px1 < 0 && py1 > 0) ? "II" : (px1 < 0 && py1 < 0) ? "III" : "IV";
+                    let qZh = (px1 > 0 && py1 > 0) ? "一" : (px1 < 0 && py1 > 0) ? "二" : (px1 < 0 && py1 < 0) ? "三" : "四";
+                    
+                    correct = isEn ? `\\text{Quadrant } ${qRoman}` : `\\text{第}${qZh}\\text{象限}`;
+                    
+                    let allRomans = ["I", "II", "III", "IV"];
+                    let allZhs = ["一", "二", "三", "四"];
+                    
+                    if (isEn) {
+                        wrongs = allRomans.filter(quad => quad !== qRoman).map(quad => `\\text{Quadrant } ${quad}`);
+                    } else {
+                        wrongs = allZhs.filter(quad => quad !== qZh).map(quad => `\\text{第}${quad}\\text{象限}`);
+                    }
+                    
+                    svg = this.generateSVG('coord', {px1: 75 + px1 * 5, py1: 75 - py1 * 5, px2: 75 + px2 * 5, py2: 75 - py2 * 5}, isEn);
+                    state.stage = 1;
+                } else {
+                    let px1 = this.randInt(-5, 5); if (px1 === 0) px1 = 3;
+                    let py1 = this.randInt(-5, 5); if (py1 === 0) py1 = -2;
+                    let transType = this.randInt(0, 2); // 0: Translate X, 1: Translate Y, 2: Reflect
+                    let px2 = px1, py2 = py1;
+                    
+                    if (transType === 0) { // Translate X
+                        let k = this.randInt(2, 6);
+                        let isRight = Math.random() < 0.5;
+                        px2 = px1 + (isRight ? k : -k);
+                        let dirEn = isRight ? "right" : "left";
+                        let dirZh = isRight ? "右" : "左";
+                        question = isEn ? `\\text{Step 1: Translate } A(${px1}, ${py1}) \\text{ ${dirEn} by } ${k}` : `\\text{第一步: 將 } A(${px1}, ${py1}) \\text{ 向${dirZh}平移 } ${k} \\text{ 單位}`;
+                    } else if (transType === 1) { // Translate Y
+                        let k = this.randInt(2, 6);
+                        let isUp = Math.random() < 0.5;
+                        py2 = py1 + (isUp ? k : -k);
+                        let dirEn = isUp ? "up" : "down";
+                        let dirZh = isUp ? "上" : "下";
+                        question = isEn ? `\\text{Step 1: Translate } A(${px1}, ${py1}) \\text{ ${dirEn} by } ${k}` : `\\text{第一步: 將 } A(${px1}, ${py1}) \\text{ 向${dirZh}平移 } ${k} \\text{ 單位}`;
+                    } else { // Reflect
+                        let isXAxis = Math.random() < 0.5;
+                        if (isXAxis) {
+                            py2 = -py1;
+                            question = isEn ? `\\text{Step 1: Reflect } A(${px1}, ${py1}) \\text{ over } x\\text{-axis}` : `\\text{第一步: 將 } A(${px1}, ${py1}) \\text{ 沿 } x \\text{ 軸反射}`;
+                        } else {
+                            px2 = -px1;
+                            question = isEn ? `\\text{Step 1: Reflect } A(${px1}, ${py1}) \\text{ over } y\\text{-axis}` : `\\text{第一步: 將 } A(${px1}, ${py1}) \\text{ 沿 } y \\text{ 軸反射}`;
+                        }
+                    }
+                    
+                    correct = `(${px2}, ${py2})`;
+                    wrongs = [`(${py2}, ${px2})`, `(${-px2}, ${py2})`, `(${px2}, ${-py2})`, `(${-px2}, ${-py2})`];
+                    state.sharedVars = { subTopic, px2, py2 };
+                    state.stage = 1;
+                }
+            } else if (state.stage === 1) {
+                let vars = state.sharedVars;
+                if (vars.subTopic === 0) {
+                    let { px1, py1, px2, py2, v1, v2 } = vars;
+                    let larger = Math.max(v1, v2);
+                    let smaller = Math.min(v1, v2);
+                    question = isEn ? `\\text{Step 1: Distance exp. from } A(${px1}, ${py1}) \\text{ to } B(${px2}, ${py2})` : `\\text{第一步: } A(${px1}, ${py1}) \\text{ 至 } B(${px2}, ${py2}) \\text{ 的距離表達式}`;
+                    
+                    let smallerStr = smaller < 0 ? `(${smaller})` : `${smaller}`;
+                    
+                    correct = `AB = ${larger} - ${smallerStr}`;
+                    wrongs = [
+                        `AB = (${px1}, ${py1}) - (${px2}, ${py2})`,
+                        `AB = ${smaller} - ${larger}`, 
+                        `AB = ${larger} + ${smallerStr}`
+                    ];
+                    
+                    svg = this.generateSVG('coord', {px1: 75 + px1 * 5, py1: 75 - py1 * 5, px2: 75 + px2 * 5, py2: 75 - py2 * 5}, isEn);
+                    state.stage = 2;
+                } else {
+                    let { px2, py2 } = vars; // New point from step 1
+                    let rotType = this.randInt(0, 2); // 0: 90, 1: 180, 2: 270
+                    let isCW = Math.random() < 0.5; // Clockwise
+                    let px3, py3, angle;
+                    
+                    if (rotType === 0) {
+                        angle = 90;
+                        if (isCW) { px3 = py2; py3 = -px2; } else { px3 = -py2; py3 = px2; }
+                    } else if (rotType === 1) {
+                        angle = 180;
+                        px3 = -px2; py3 = -py2;
+                    } else {
+                        angle = 270;
+                        if (isCW) { px3 = -py2; py3 = px2; } else { px3 = py2; py3 = -px2; }
+                    }
+                    
+                    let dirEn = isCW ? "clockwise" : "anti-clockwise";
+                    let dirZh = isCW ? "順時針" : "逆時針";
+                    if (angle === 180) {
+                        question = isEn ? `\\text{Step 2: Rotate } (${px2}, ${py2}) \\text{ by } 180^\\circ \\text{ about origin}` : `\\text{第二步: 將 } (${px2}, ${py2}) \\text{ 繞原點旋轉 } 180^\\circ`;
+                    } else {
+                        question = isEn ? `\\text{Step 2: Rotate } (${px2}, ${py2}) \\text{ } ${angle}^\\circ \\text{ } ${dirEn}` : `\\text{第二步: 將 } (${px2}, ${py2}) \\text{ } ${dirZh} \\text{ 旋轉 } ${angle}^\\circ`;
+                    }
+                    
+                    correct = `(${px3}, ${py3})`;
+                    wrongs = [`(${py3}, ${px3})`, `(${-px3}, ${py3})`, `(${px3}, ${-py3})`, `(${-px3}, ${-py3})`];
+                    state.stage = 0;
+                }
+            } else if (state.stage === 2) {
+                let vars = state.sharedVars;
+                let { px1, py1, px2, py2, v1, v2 } = vars;
+                let dist = Math.abs(v2 - v1);
+                question = isEn ? `\\text{Step 2: Calculate distance } AB` : `\\text{第二步: 計算該距離}`;
+                correct = `AB = ${dist}`;
+                wrongs = [`AB = ${v1 + v2}`, `AB = ${-dist}`, `AB = ${dist + 2}`];
+                svg = this.generateSVG('coord', {px1: 75 + px1 * 5, py1: 75 - py1 * 5, px2: 75 + px2 * 5, py2: 75 - py2 * 5}, isEn);
+                state.stage = 0;
+            }
+        }
+        else if (type === 2) { // Algebra (代數運算與展開)
+            if (state.stage === 0) {
+                let subType = this.randInt(0, 2);
+                
+                if (subType === 0) {
+                    // 展開題型 (原有)
+                    let a = this.randInt(-5, -2);
+                    let b = this.randInt(2, 5);
+                    let c = this.randInt(2, 5);
+                    let d = this.randInt(2, 5);
+                    let s1 = a * b; // Negative
+                    let s2 = -a * c; // Positive
+                    state.sharedVars = { subType, d, s1, s2 };
+                    
+                    question = isEn ? `\\text{Step 1: Expand } ${a}(${b}x - ${c}y)` : `\\text{第一步: 展開 } ${a}(${b}x - ${c}y)`;
+                    correct = `${s1}x + ${s2}y`;
+                    wrongs = [`${s1}x - ${s2}y`, `${-s1}x + ${s2}y`, `${s1}x + ${c}y`];
+                } else if (subType === 1) {
+                    // 代數乘法與有向數: 例如 x * (-x) * cy * (dy)
+                    let c = this.randInt(2, 5);
+                    let d = -this.randInt(2, 5); // 負數
+                    
+                    state.sharedVars = { subType, c, d, part2: c * d };
+                    
+                    question = isEn ? `\\text{Step 1: Simplify } x \\times (-x)` : `\\text{第一步: 化簡 } x \\times (-x)`;
+                    correct = `-x^2`;
+                    wrongs = [`x^2`, `-2x`, `2x`];
+                } else {
+                    // 四則混合運算: 例如 ay - by * c + (d)
+                    let a = this.randInt(2, 6);
+                    let b = this.randInt(3, 7);
+                    let c = this.randInt(2, 4);
+                    let d = -this.randInt(5, 12); // 負數
+                    
+                    state.sharedVars = { subType, a, b, c, d, mult: b * c };
+                    
+                    question = isEn ? `\\text{Step 1: Evaluate } ${b}y \\times ${c}` : `\\text{第一步: 計算 } ${b}y \\times ${c}`;
+                    correct = `${b*c}y`;
+                    wrongs = [`${b+c}y`, `${-(b*c)}y`, `${b*c}`];
+                }
+                state.stage = 1;
+            } else {
+                let vars = state.sharedVars;
+                if (vars.subType === 0) {
+                    let { d, s1, s2 } = vars;
+                    question = isEn ? `\\text{Step 2: Simplify } (${s1}x + ${s2}y) - ${d}x` : `\\text{第二步: 化簡 } (${s1}x + ${s2}y) - ${d}x`;
+                    correct = `${s1 - d}x + ${s2}y`;
+                    wrongs = [`${s1 + d}x + ${s2}y`, `${s1 - d}x - ${s2}y`, `${s1}x + ${s2 - d}y`];
+                } else if (vars.subType === 1) {
+                    let { c, d, part2 } = vars;
+                    question = isEn ? `\\text{Step 2: Multiply } (-x^2) \\times ${c}y \\times (${d}y)` : `\\text{第二步: 計算 } (-x^2) \\times ${c}y \\times (${d}y)`;
+                    let finalCoeff = -1 * part2;
+                    correct = `${finalCoeff}x^2y^2`;
+                    wrongs = [`${-finalCoeff}x^2y^2`, `${finalCoeff}xy`, `${finalCoeff}x^2y`];
+                } else {
+                    let { a, b, c, d, mult } = vars;
+                    question = isEn ? `\\text{Step 2: Simplify } ${a}y - ${mult}y + (${d})` : `\\text{第二步: 化簡 } ${a}y - ${mult}y + (${d})`;
+                    let finalCoeff = a - mult;
+                    correct = `${finalCoeff}y - ${Math.abs(d)}`;
+                    wrongs = [`${finalCoeff}y + ${Math.abs(d)}`, `${a + mult}y - ${Math.abs(d)}`, `${finalCoeff - Math.abs(d)}y`];
+                }
+                state.stage = 0;
+            }
+        }
+        else if (type === 3) { // Equations (方程求解 - Cross Multiply)
+            if (state.stage === 0) { 
+                let xAns = this.randInt(1, 5); // Kept positive to avoid x + -B formatting issue
+                let A = this.randInt(1, 5);
+                if ((Math.abs(xAns + 3 * A) % 2) !== 0) A++; 
+                let B = (xAns + 3 * A) / 2;
+                state.sharedVars = { A, B };
+                
+                question = isEn ? `\\text{Step 1: Cross-multiply } \\frac{x+${A}}{2} = \\frac{x+${B}}{3}` : `\\text{第一步 (交叉相乘): } \\frac{x+${A}}{2} = \\frac{x+${B}}{3}`;
+                correct = `3(x+${A}) = 2(x+${B})`;
+                wrongs = [`2(x+${A}) = 3(x+${B})`, `3(x+${A}) = x+${B}`, `x+${A} = 2(x+${B})`];
+                state.stage = 1;
+            } else if (state.stage === 1) { 
+                let { A, B } = state.sharedVars;
+                question = isEn ? `\\text{Step 2: Expand } 3(x+${A}) = 2(x+${B})` : `\\text{第二步: 展開 } 3(x+${A}) = 2(x+${B})`;
+                correct = `3x + ${3 * A} = 2x + ${2 * B}`;
+                wrongs = [`3x + ${A} = 2x + ${B}`, `3x + ${3 * A} = 2x + ${B}`, `3x + ${A} = 2x + ${2 * B}`];
+                state.stage = 2;
+            } else if (state.stage === 2) {
+                let { A, B } = state.sharedVars;
+                question = isEn ? `\\text{Step 3: Move terms in } 3x + ${3 * A} = 2x + ${2 * B}` : `\\text{第三步: 將 } 3x + ${3 * A} = 2x + ${2 * B} \\text{ 移項}`;
+                correct = `3x - 2x = ${2 * B} - ${3 * A}`;
+                wrongs = [
+                    `3x + 2x = ${2 * B} + ${3 * A}`, 
+                    `3x - 2x = ${2 * B} + ${3 * A}`, 
+                    `2x - 3x = ${3 * A} - ${2 * B}`
+                ];
+                state.stage = 3;
+            } else {
+                let { A, B } = state.sharedVars;
+                question = isEn ? `\\text{Step 4: Solve } 3x - 2x = ${2 * B} - ${3 * A}` : `\\text{第四步: 求得 } x`;
+                let ans = 2 * B - 3 * A;
+                correct = `x = ${ans}`;
+                wrongs = [`x = ${ans + 5}`, `x = ${ans - 3}`, `x = ${Math.abs(ans) + 2}`];
+                state.stage = 0;
+            }
+        }
+        else { // Type 4: Substitution (代入法)
+            if (state.stage === 0) { 
+                let subType = Math.random() < 0.5 ? 0 : 1;
+                if (subType === 0) {
+                    // Format: x = ay - c
+                    let a = this.randInt(2, 5);
+                    let c = this.randInt(10, 25);
+                    let yVal = this.randInt(-5, 6);
+                    if (yVal === 0) yVal = 3;
+                    state.sharedVars = { subType, a, c, yVal, part1: a * yVal };
+                    
+                    question = isEn ? `\\text{Step 1: Evaluate } ${a}y \\text{ if } y = ${yVal}` : `\\text{第一步: 若 } y = ${yVal}, \\text{ 計算 } ${a}y`;
+                    correct = `${a * yVal}`;
+                    wrongs = [`${a + yVal}`, `${a}${Math.abs(yVal)}`, `${-(a * yVal)}`];
+                } else {
+                    // Format: z = ax + by (代入兩個數字)
+                    let a = this.randInt(2, 5);
+                    let b = this.randInt(-5, -2);
+                    let xVal = this.randInt(-4, 5); if (xVal === 0) xVal = 2;
+                    let yVal = this.randInt(2, 6);
+                    state.sharedVars = { subType, a, b, xVal, yVal, part1: a * xVal };
+                    
+                    question = isEn ? `\\text{Step 1: Evaluate } ${a}x \\text{ if } x = ${xVal}` : `\\text{第一步: 若 } x = ${xVal}, \\text{ 計算 } ${a}x`;
+                    correct = `${a * xVal}`;
+                    wrongs = [`${a + xVal}`, `${-(a * xVal)}`, `${a}${Math.abs(xVal)}`];
+                }
+                state.stage = 1;
+            } else { 
+                let vars = state.sharedVars;
+                if (vars.subType === 0) {
+                    question = isEn ? `\\text{Step 2: Find } x = ${vars.a}y - ${vars.c} \\text{ given } ${vars.a}y = ${vars.part1}` : `\\text{第二步: 已知 } ${vars.a}y = ${vars.part1}, \\text{ 求 } x = ${vars.a}y - ${vars.c}`;
+                    let ans = vars.part1 - vars.c;
+                    correct = `${ans}`;
+                    wrongs = [`${vars.part1 + vars.c}`, `${-ans}`, `${ans + vars.a}`];
+                } else {
+                    let bStr = vars.b < 0 ? `- ${Math.abs(vars.b)}` : `+ ${vars.b}`;
+                    question = isEn ? `\\text{Step 2: Find } z = ${vars.a}x ${bStr}y \\text{ if } ${vars.a}x = ${vars.part1}, y = ${vars.yVal}` : `\\text{第二步: 若 } ${vars.a}x = ${vars.part1}, y = ${vars.yVal}, \\text{ 求 } z = ${vars.a}x ${bStr}y`;
+                    let ans = vars.part1 + vars.b * vars.yVal;
+                    correct = `${ans}`;
+                    wrongs = [`${vars.part1 - vars.b * vars.yVal}`, `${ans + 2}`, `${-(ans)}`];
+                }
+                state.stage = 0;
+            }
+        }
+
+        // Deduplicate and pad errors
+        let uniqueWrongs = Array.from(new Set(wrongs)).filter(w => w !== correct);
+        while(uniqueWrongs.length < 3) uniqueWrongs.push(correct + " \\text{ (Err" + Math.floor(Math.random()*10) + ")}"); 
+        
+        let options = uniqueWrongs.slice(0, 3);
+        const correctIdx = Math.floor(Math.random() * 4);
+        options.splice(correctIdx, 0, correct);
+
+        return { question, options, correctIdx, svg };
+    }
+};
+
+// ============================================================================
+// ⚙️ 區塊 2：核心技能與遊戲引擎 (CORE SKILLS & GAME ENGINE)
+// ============================================================================
+
+// --- DOM 綁定與全域變數 ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const modalContainer = document.getElementById('modal-container');
+const startScreen = document.getElementById('start-screen');
+const levelupScreen = document.getElementById('levelup-screen');
+const gameoverScreen = document.getElementById('gameover-screen');
+
+const btnStartZh = document.getElementById('btn-start-zh');
+const btnStartEn = document.getElementById('btn-start-en');
+const btnRestart = document.getElementById('btn-restart');
+const btnContinue = document.getElementById('btn-continue');
+
+const uiLevel = document.getElementById('ui-level');
+const uiTimer = document.getElementById('ui-timer');
+const uiHp = document.getElementById('ui-hp');
+const uiMaxHp = document.getElementById('ui-maxhp');
+const uiKills = document.getElementById('ui-kills');
+const expBar = document.getElementById('exp-bar');
+const quizTimerBar = document.getElementById('quiz-timer-bar');
+const quizTimerText = document.getElementById('quiz-timer-text');
+const joystickZone = document.getElementById('joystick-zone');
+const joystickStick = document.getElementById('joystick-stick');
+
+const GAME_DURATION = 10 * 60 * 1000;
+const QUIZ_INTERVAL = 5000;
+const WORLD_SIZE = { width: 4000, height: 4000 };
+
+let gameState = 'START'; 
+let currentLang = 'zh';
+let lastTime = 0, gameTime = 0, timeSinceLastQuiz = 0, activeShockwaveBurstTimer = 0;
+let animationFrameId, quizTimerInterval;
+let camera = { x: 0, y: 0 };
+let joystickVector = { x: 0, y: 0 };
+const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+
+let player, enemies = [], particles = [], projectiles = [], floatingTexts = [], kills = 0;
+let currentQuizzesData = [], currentUpgrades = [], quizResults = [null, null, null], activeQuizzes = 3, quizTimeLeft = 30;
+
+const weaponDetails = {
+    meteor: { name: '流星錘', color: '#00ffff', icon: '☄️', uiId: 'progress-meteor' },
+    lightning: { name: '連環閃電', color: '#b500ff', icon: '⚡', uiId: 'progress-lightning' },
+    firestorm: { name: '火燒連環', color: '#ff4500', icon: '🔥', uiId: 'progress-firestorm' },
+    shockwave: { name: '衝擊波', color: '#ffee00', icon: '💥', uiId: 'progress-shockwave' }
+};
+
+// --- 初始化標題 ---
+document.getElementById('main-title-text').innerText = TopicConfig.titleZh;
+document.getElementById('sub-title-text').innerText = TopicConfig.titleEn;
+
+// --- 視窗與輸入事件 ---
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    joystickZone.style.display = (window.innerWidth < 768 || 'ontouchstart' in window) ? 'block' : 'none';
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+window.addEventListener('keydown', (e) => { if(keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+window.addEventListener('keyup', (e) => { if(keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+
+let isDraggingJoystick = false, joyCenter = { x: 0, y: 0 }; const maxJoyDist = 40;
+joystickZone.addEventListener('touchstart', (e) => {
+    e.preventDefault(); isDraggingJoystick = true;
+    const rect = joystickZone.getBoundingClientRect();
+    joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+joystickZone.addEventListener('touchmove', (e) => {
+    e.preventDefault(); if (isDraggingJoystick) updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+const resetJoystick = () => {
+    isDraggingJoystick = false; joystickStick.style.transform = `translate(0px, 0px)`; joystickVector = { x: 0, y: 0 };
+};
+joystickZone.addEventListener('touchend', resetJoystick);
+joystickZone.addEventListener('touchcancel', resetJoystick);
+
+function updateJoystick(tx, ty) {
+    let dx = tx - joyCenter.x; let dy = ty - joyCenter.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxJoyDist) { dx = (dx / dist) * maxJoyDist; dy = (dy / dist) * maxJoyDist; }
+    joystickStick.style.transform = `translate(${dx}px, ${dy}px)`;
+    joystickVector.x = dx / maxJoyDist; joystickVector.y = dy / maxJoyDist;
+}
+
+// --- 數學工具 ---
+function getDistance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+function randRange(min, max) { return Math.random() * (max - min) + min; }
+function getRandomElement(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// --- 技能與實體類別 ---
+class BasicBullet {
+    constructor(x, y, targetX, targetY, damage) {
+        this.x = x; this.y = y; this.damage = damage; this.radius = 4; this.active = true;
+        const angle = Math.atan2(targetY - y, targetX - x);
+        this.vx = Math.cos(angle) * 450; this.vy = Math.sin(angle) * 450;
+    }
+    update(dt) {
+        if (!this.active) return;
+        this.x += this.vx * dt; this.y += this.vy * dt;
+        for (let e of enemies) {
+            if (getDistance(this.x, this.y, e.x, e.y) < this.radius + e.radius) {
+                e.takeDamage(this.damage);
+                createHitParticles(this.x, this.y, '#00f2fe', 3);
+                this.active = false; break;
+            }
+        }
+        if (getDistance(this.x, this.y, player.x, player.y) > 800) this.active = false;
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.x, this.y); ctx.shadowBlur = 10; ctx.shadowColor = '#00f2fe'; ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+}
+
+class Player {
+    constructor() {
+        this.x = WORLD_SIZE.width / 2; this.y = WORLD_SIZE.height / 2;
+        this.radius = 16; this.speed = 220; this.maxHp = 100; this.hp = this.maxHp;
+        this.level = 1; this.orbitAngle = 0; this.facing = 1;
+        this.basicWeapon = { cooldown: 0.8, timer: 0, damage: 15 };
+        this.weapons = {
+            meteor: { level: 0, count: 0, damage: 30, radius: 100, active: false },
+            lightning: { level: 0, cooldown: 1.5, timer: 0, damage: 45, chains: 2, active: false },
+            firestorm: { level: 0, cooldown: 2.0, timer: 0, damage: 25, active: false },
+            shockwave: { level: 0, cooldown: 3.0, timer: 0, damage: 60, maxRadius: 250, active: false }
+        };
+    }
+    update(dt) {
+        let dx = 0, dy = 0;
+        if (keys.w || keys.ArrowUp) dy -= 1; if (keys.s || keys.ArrowDown) dy += 1;
+        if (keys.a || keys.ArrowLeft) dx -= 1; if (keys.d || keys.ArrowRight) dx += 1;
+        if (dx === 0 && dy === 0) { dx = joystickVector.x; dy = joystickVector.y; }
+
+        if (dx !== 0 || dy !== 0) {
+            const len = Math.hypot(dx, dy); dx /= len; dy /= len;
+            this.x += dx * this.speed * dt; this.y += dy * this.speed * dt;
+            this.facing = dx > 0 ? 1 : (dx < 0 ? -1 : this.facing);
+        }
+
+        this.x = Math.max(this.radius, Math.min(WORLD_SIZE.width - this.radius, this.x));
+        this.y = Math.max(this.radius, Math.min(WORLD_SIZE.height - this.radius, this.y));
+        this.orbitAngle += dt * 3; 
+
+        this.basicWeapon.timer += dt;
+        if (this.basicWeapon.timer >= this.basicWeapon.cooldown) {
+            this.basicWeapon.timer = 0;
+            if(enemies.length > 0) {
+                let nearest = null, minDist = Infinity;
+                enemies.forEach(e => { const d = getDistance(this.x, this.y, e.x, e.y); if(d < minDist){ minDist=d; nearest=e; }});
+                if(nearest) projectiles.push(new BasicBullet(this.x, this.y, nearest.x, nearest.y, this.basicWeapon.damage));
+            }
+        }
+        this.updateWeapons(dt);
+        uiHp.innerText = Math.max(0, Math.floor(this.hp));
+        uiMaxHp.innerText = this.maxHp;
+    }
+
+    updateWeapons(dt) {
+        if (this.weapons.meteor.active) {
+            const w = this.weapons.meteor;
+            const count = w.count + (w.level > 1 ? Math.floor(w.level / 2) : 0);
+            const radius = w.radius + w.level * 10;
+            const dmg = w.damage + w.level * 10;
+            for (let i = 0; i < count; i++) {
+                const mx = this.x + Math.cos(this.orbitAngle + (i*Math.PI*2)/count) * radius;
+                const my = this.y + Math.sin(this.orbitAngle + (i*Math.PI*2)/count) * radius;
+                particles.push(new TrailParticle(mx, my, '#00ffff'));
+                enemies.forEach(e => {
+                    if (getDistance(mx, my, e.x, e.y) < 20 + e.radius && Math.random() < 0.2) {
+                        e.takeDamage(dmg * dt * 10); createHitParticles(e.x, e.y, '#00ffff', 2);
+                    }
+                });
+            }
+        }
+        if (this.weapons.lightning.active) {
+            this.weapons.lightning.timer += dt;
+            if (this.weapons.lightning.timer >= Math.max(0.5, this.weapons.lightning.cooldown - this.weapons.lightning.level * 0.1)) {
+                this.weapons.lightning.timer = 0; this.fireLightning();
+            }
+        }
+        if (this.weapons.firestorm.active) {
+            this.weapons.firestorm.timer += dt;
+            if (this.weapons.firestorm.timer >= Math.max(0.8, this.weapons.firestorm.cooldown - this.weapons.firestorm.level * 0.15)) {
+                this.weapons.firestorm.timer = 0; this.fireFirestorm();
+            }
+        }
+        if (activeShockwaveBurstTimer > 0) {
+            activeShockwaveBurstTimer -= dt;
+            if (Math.random() < 0.3) projectiles.push(new ShockwaveEffect(this.x, this.y, 320, 80));
+        }
+        if (this.weapons.shockwave.active) {
+            this.weapons.shockwave.timer += dt;
+            if (this.weapons.shockwave.timer >= Math.max(1.2, this.weapons.shockwave.cooldown - this.weapons.shockwave.level * 0.2)) {
+                this.weapons.shockwave.timer = 0;
+                projectiles.push(new ShockwaveEffect(this.x, this.y, this.weapons.shockwave.maxRadius + this.weapons.shockwave.level * 30, this.weapons.shockwave.damage + this.weapons.shockwave.level * 20));
+            }
+        }
+    }
+    
+    fireLightning() {
+        if(enemies.length === 0) return;
+        const dmg = this.weapons.lightning.damage + this.weapons.lightning.level * 15;
+        let chainsLeft = this.weapons.lightning.chains + this.weapons.lightning.level;
+        let currentTarget = null, minDist = Infinity;
+        enemies.forEach(e => { const d = getDistance(this.x, this.y, e.x, e.y); if (d < minDist) { minDist = d; currentTarget = e; }});
+        if(!currentTarget) return;
+        let origin = { x: this.x, y: this.y }, hitEnemies = new Set(), strikePoints = [origin];
+        while (chainsLeft > 0 && currentTarget) {
+            hitEnemies.add(currentTarget); strikePoints.push({ x: currentTarget.x, y: currentTarget.y });
+            currentTarget.takeDamage(dmg); origin = currentTarget; chainsLeft--; currentTarget = null; minDist = 400;
+            enemies.forEach(e => { if (!hitEnemies.has(e)) { const d = getDistance(origin.x, origin.y, e.x, e.y); if (d < minDist) { minDist = d; currentTarget = e; }}});
+        }
+        projectiles.push(new LightningStrike(strikePoints));
+    }
+
+    fireFirestorm() {
+        if(enemies.length === 0) return;
+        const numFireballs = 1 + Math.floor(this.weapons.firestorm.level / 2);
+        const dmg = this.weapons.firestorm.damage + this.weapons.firestorm.level * 8;
+        const poolRad = 60 + this.weapons.firestorm.level * 15;
+        for (let i = 0; i < numFireballs; i++) {
+            const target = getRandomElement(enemies);
+            if (target) setTimeout(() => projectiles.push(new Fireball(this.x, this.y, target.x, target.y, dmg, poolRad)), i * 150);
+        }
+    }
+
+    takeDamage(amount) {
+        this.hp -= amount;
+        if (this.hp <= 0 && gameState === 'PLAYING') endGame(false);
+    }
+
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.x, this.y);
+        if (this.weapons.meteor.active) {
+            ctx.shadowBlur = 20; ctx.shadowColor = '#00ffff'; ctx.fillStyle = '#ccffff';
+            const w = this.weapons.meteor;
+            const count = w.count + (w.level > 1 ? Math.floor(w.level / 2) : 0);
+            const radius = w.radius + w.level * 10;
+            for (let i = 0; i < count; i++) {
+                const angle = this.orbitAngle + (i * Math.PI * 2) / count;
+                const mx = Math.cos(angle) * radius, my = Math.sin(angle) * radius;
+                ctx.beginPath();
+                for(let j=0; j<6; j++) {
+                    const sa = angle + (j*Math.PI/3) + this.orbitAngle*5;
+                    ctx.lineTo(mx + Math.cos(sa)*15, my + Math.sin(sa)*15); ctx.lineTo(mx + Math.cos(sa+Math.PI/6)*8, my + Math.sin(sa+Math.PI/6)*8);
+                }
+                ctx.closePath(); ctx.fill();
+            }
+        }
+        ctx.rotate(this.facing === 1 ? Math.PI / 2 : -Math.PI / 2);
+        ctx.shadowBlur = 20; ctx.shadowColor = '#00f2fe'; ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.moveTo(0, -this.radius * 1.2); ctx.lineTo(this.radius, this.radius); ctx.lineTo(0, this.radius * 0.5); ctx.lineTo(-this.radius, this.radius); ctx.closePath(); ctx.fill();
+        ctx.restore();
+    }
+}
+
+class Enemy {
+    constructor(x, y, hp, speed, damage, color, type = 'square') {
+        this.x = x; this.y = y; this.maxHp = hp; this.hp = hp; this.speed = speed; this.damage = damage; this.color = color; this.type = type;
+        this.radius = type === 'boss' ? 24 : 14; this.flash = 0;
+    }
+    update(dt) {
+        const dx = player.x - this.x, dy = player.y - this.y, dist = Math.hypot(dx, dy);
+        let vx = 0, vy = 0; if (dist > 0) { vx = (dx / dist) * this.speed; vy = (dy / dist) * this.speed; }
+        for (let i = 0; i < enemies.length; i++) {
+            if (enemies[i] === this) continue;
+            const d = getDistance(this.x, this.y, enemies[i].x, enemies[i].y);
+            if (d < this.radius * 2) {
+                const pushStr = (this.radius * 2 - d) * 2;
+                this.x -= (enemies[i].x - this.x) / d * pushStr * dt; this.y -= (enemies[i].y - this.y) / d * pushStr * dt;
+            }
+        }
+        this.x += vx * dt; this.y += vy * dt;
+        if (getDistance(this.x, this.y, player.x, player.y) < this.radius + player.radius) player.takeDamage(this.damage * dt);
+    }
+    takeDamage(amount) {
+        this.hp -= amount; this.flash = 0.1;
+        floatingTexts.push({ x: this.x + randRange(-15, 15), y: this.y - 20, text: Math.floor(amount), life: 0.8, color: '#fff' });
+        if (this.hp <= 0) {
+            const idx = enemies.indexOf(this); if (idx > -1) enemies.splice(idx, 1);
+            kills++; uiKills.innerText = kills;
+            createHitParticles(this.x, this.y, this.color, this.type === 'boss' ? 25 : 8);
+        }
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.x, this.y); ctx.shadowBlur = 15; ctx.shadowColor = this.color;
+        ctx.strokeStyle = this.color; ctx.fillStyle = this.flash > 0 ? '#fff' : '#111';
+        if(this.flash > 0) this.flash -= 0.016; 
+        ctx.lineWidth = 2; ctx.beginPath();
+        if (this.type === 'square') { ctx.rect(-this.radius, -this.radius, this.radius*2, this.radius*2); } 
+        else if (this.type === 'triangle') { ctx.moveTo(0, -this.radius); ctx.lineTo(this.radius, this.radius); ctx.lineTo(-this.radius, this.radius); ctx.closePath(); } 
+        else if (this.type === 'boss') { ctx.arc(0, 0, this.radius, 0, Math.PI*2); ctx.moveTo(0, -this.radius); ctx.lineTo(0, this.radius); ctx.moveTo(-this.radius, 0); ctx.lineTo(this.radius, 0); }
+        ctx.fill(); ctx.stroke();
+        if (this.type === 'boss' && this.hp < this.maxHp) {
+            ctx.fillStyle = '#333'; ctx.fillRect(-this.radius, -this.radius - 10, this.radius * 2, 4);
+            ctx.fillStyle = '#f00'; ctx.fillRect(-this.radius, -this.radius - 10, (this.radius * 2) * (this.hp / this.maxHp), 4);
+        }
+        ctx.restore();
+    }
+}
+
+// Effect & Weapon Classes (Shockwave, Lightning, Fireball, Particles)
+class ShockwaveEffect {
+    constructor(x, y, maxRad, dmg) { this.x=x; this.y=y; this.rad=10; this.maxRad=maxRad; this.dmg=dmg; this.hit=new Set(); this.active=true; }
+    update(dt) {
+        if(!this.active) return; this.rad += 500*dt;
+        enemies.forEach(e => {
+            if(!this.hit.has(e)) {
+                const dist = getDistance(this.x, this.y, e.x, e.y);
+                if(dist <= this.rad || Math.abs(dist - this.rad) < 30) {
+                    e.takeDamage(this.dmg); this.hit.add(e); createHitParticles(e.x, e.y, '#ffee00', 5);
+                    const ang = Math.atan2(e.y - this.y, e.x - this.x); e.x += Math.cos(ang)*40; e.y += Math.sin(ang)*40;
+                }
+            }
+        });
+        if(this.rad >= this.maxRad) this.active = false;
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.x, this.y); const a = Math.max(0, 1-(this.rad/this.maxRad));
+        ctx.beginPath(); ctx.arc(0,0,this.rad,0,Math.PI*2); ctx.strokeStyle = `rgba(255,238,0,${a})`; ctx.lineWidth=12; ctx.shadowBlur=25; ctx.shadowColor='#ffee00'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(0,0,Math.max(0,this.rad-15),0,Math.PI*2); ctx.strokeStyle = `rgba(255,255,255,${a*0.8})`; ctx.lineWidth=4; ctx.stroke();
+        ctx.restore();
+    }
+}
+
+class LightningStrike {
+    constructor(points) {
+        this.life = 0.3; this.maxLife = 0.3; this.active = true; this.jpts = [];
+        for(let i=0; i<points.length-1; i++){
+            this.jpts.push(points[i]); const steps = Math.max(1, Math.floor(getDistance(points[i].x,points[i].y,points[i+1].x,points[i+1].y)/30));
+            for(let j=1; j<steps; j++) this.jpts.push({ x: points[i].x + (points[i+1].x-points[i].x)*(j/steps) + randRange(-20,20), y: points[i].y + (points[i+1].y-points[i].y)*(j/steps) + randRange(-20,20) });
+        }
+        this.jpts.push(points[points.length-1]);
+    }
+    update(dt) { this.life -= dt; this.active = this.life > 0; }
+    draw(ctx) {
+        ctx.save(); ctx.globalAlpha = Math.max(0, this.life/this.maxLife); ctx.beginPath(); ctx.moveTo(this.jpts[0].x, this.jpts[0].y);
+        for(let i=1; i<this.jpts.length; i++) ctx.lineTo(this.jpts[i].x, this.jpts[i].y);
+        ctx.lineJoin='round'; ctx.shadowBlur=30; ctx.shadowColor='#b500ff'; ctx.strokeStyle='#e085ff'; ctx.lineWidth=6; ctx.stroke();
+        ctx.shadowBlur=0; ctx.strokeStyle='#ffffff'; ctx.lineWidth=2; ctx.stroke(); ctx.restore();
+    }
+}
+
+class Fireball {
+    constructor(sx,sy,tx,ty,dmg,poolRad) {
+        this.x=sx; this.y=sy; this.tx=tx; this.ty=ty; this.dmg=dmg; this.poolRad=poolRad; this.active=true;
+        const ang = Math.atan2(ty-sy, tx-sx); this.vx = Math.cos(ang)*600; this.vy = Math.sin(ang)*600;
+    }
+    update(dt) {
+        if(!this.active) return; particles.push(new Particle(this.x, this.y, '#ff4500'));
+        this.x += this.vx*dt; this.y += this.vy*dt;
+        if(getDistance(this.x,this.y,this.tx,this.ty) < 20) {
+            this.active=false; createHitParticles(this.tx,this.ty,'#ff4500',20); projectiles.push(new FirePool(this.tx,this.ty,this.poolRad,this.dmg));
+        }
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.x, this.y); ctx.shadowBlur=20; ctx.shadowColor='#ff4500'; ctx.fillStyle='#ffaa00'; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+}
+
+class FirePool {
+    constructor(x,y,rad,dmg) { this.x=x; this.y=y; this.rad=rad; this.dmg=dmg; this.life=3; this.maxLife=3; this.active=true; this.type='firepool'; }
+    update(dt) {
+        if(!this.active) return; this.life -= dt; if(this.life <= 0) { this.active=false; return; }
+        enemies.forEach(e => { if(getDistance(this.x,this.y,e.x,e.y) < this.rad+e.radius) e.takeDamage(this.dmg*dt); });
+        if(Math.random()<0.3) particles.push(new Particle(this.x+randRange(-this.rad,this.rad), this.y+randRange(-this.rad,this.rad), '#ff4500'));
+    }
+    draw(ctx) {
+        ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.translate(this.x,this.y); const a = Math.min(1,this.life)*0.5;
+        const grad = ctx.createRadialGradient(0,0,0,0,0,this.rad); grad.addColorStop(0,`rgba(255,170,0,${a})`); grad.addColorStop(0.5,`rgba(255,69,0,${a*0.6})`); grad.addColorStop(1,'rgba(255,0,0,0)');
+        ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(0,0,this.rad,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+}
+
+class TrailParticle {
+    constructor(x,y,c) { this.x=x; this.y=y; this.c=c; this.life=0.2; this.maxLife=0.2; }
+    update(dt) { this.life-=dt; return this.life>0; }
+    draw(ctx) { ctx.globalAlpha=Math.max(0,this.life/this.maxLife); ctx.fillStyle=this.c; ctx.beginPath(); ctx.arc(this.x,this.y,4,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1.0; }
+}
+
+class Particle {
+    constructor(x,y,c) {
+        this.x=x; this.y=y; this.c=c; const ang=Math.random()*Math.PI*2; const spd=randRange(50,200);
+        this.vx=Math.cos(ang)*spd; this.vy=Math.sin(ang)*spd; this.life=randRange(0.3,0.6); this.maxLife=this.life; this.size=randRange(2,5);
+    }
+    update(dt) { this.x+=this.vx*dt; this.y+=this.vy*dt; this.vx*=0.95; this.vy*=0.95; this.life-=dt; return this.life>0; }
+    draw(ctx) { ctx.globalAlpha=Math.max(0,this.life/this.maxLife); ctx.fillStyle=this.c; ctx.shadowBlur=10; ctx.shadowColor=this.c; ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1.0; ctx.shadowBlur=0; }
+}
+
+function createHitParticles(x, y, color, count) { for (let i=0; i<count; i++) particles.push(new Particle(x, y, color)); }
+
+// --- 遊戲狀態管理 ---
+function startGame(lang = 'zh') {
+    currentLang = lang; gameState = 'PLAYING';
+    modalContainer.classList.add('hidden'); startScreen.classList.add('hidden'); gameoverScreen.classList.add('hidden'); levelupScreen.classList.add('hidden');
+    
+    const isEn = lang === 'en';
+    document.title = isEn ? TopicConfig.titleEn : TopicConfig.titleZh;
+    document.getElementById('lbl-level').innerText = isEn ? 'LEVEL' : '系統評級';
+    document.getElementById('lbl-meteor').innerText = isEn ? 'Meteor' : '流星';
+    document.getElementById('lbl-lightning').innerText = isEn ? 'Lightning' : '閃電';
+    document.getElementById('lbl-firestorm').innerText = isEn ? 'Fire' : '火燒';
+    document.getElementById('lbl-shockwave').innerText = isEn ? 'Shockwave' : '衝擊波';
+    document.getElementById('lbl-quiz-title').innerText = isEn ? 'MIND TRIAL: LEVEL UP!' : '心智試煉 LEVEL UP!';
+    document.getElementById('lbl-quiz-desc').innerText = isEn ? 'Select correct steps within 30s! Get 3/3 right to unlock Shockwave!' : '30秒內選出正確概念步驟！三題全對即可觸發全屏衝擊波！';
+    document.getElementById('lbl-end-time').innerText = isEn ? 'Survival Time' : '存活時間';
+    document.getElementById('lbl-end-kills').innerText = isEn ? 'Entities Defeated' : '消滅實體';
+    document.getElementById('lbl-end-level').innerText = isEn ? 'System Rating' : '系統評級';
+
+    player = new Player(); enemies = []; particles = []; projectiles = []; floatingTexts = [];
+    kills = 0; gameTime = 0; timeSinceLastQuiz = 0;
+    uiKills.innerText = kills; uiLevel.innerText = player.level; expBar.style.width = '0%';
+    ['progress-meteor', 'progress-lightning', 'progress-firestorm', 'progress-shockwave'].forEach(id => { document.getElementById(id).style.width = '0%'; });
+    
+    lastTime = performance.now(); cancelAnimationFrame(animationFrameId); animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+function endGame(win = false) {
+    gameState = 'GAMEOVER';
+    modalContainer.classList.remove('hidden'); gameoverScreen.classList.remove('hidden'); startScreen.classList.add('hidden'); levelupScreen.classList.add('hidden');
+    const titleEl = document.getElementById('end-title'); const isEn = currentLang === 'en';
+    if (win) {
+        titleEl.innerText = 'SYSTEM CONQUERED'; titleEl.className = 'text-5xl md:text-6xl font-black text-cyan-400 mb-4 drop-shadow-[0_0_15px_rgba(0,255,255,0.8)]';
+        document.getElementById('end-desc').innerText = isEn ? 'You survived and mastered the trials!' : '你解開了所有的封印，成功生還！';
+    } else {
+        titleEl.innerText = 'SYSTEM FAILURE'; titleEl.className = 'text-5xl md:text-6xl font-black text-red-500 mb-4 drop-shadow-[0_0_15px_rgba(255,0,0,0.8)]';
+        document.getElementById('end-desc').innerText = isEn ? 'Overwhelmed by entities...' : '洪流吞噬了你，邏輯運算終止...';
+    }
+    const m = Math.floor(gameTime / 60000), s = Math.floor((gameTime % 60000) / 1000);
+    document.getElementById('end-time').innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    document.getElementById('end-kills').innerText = kills; document.getElementById('end-level').innerText = player.level;
+}
+
+function spawnEnemies(dt) {
+    const minutes = gameTime / 60000;
+    const lvlMult = 1 + (player.level - 1) * 0.35; 
+    if (Math.random() < (3 + minutes * 3) * lvlMult * dt) {
+        const ang = Math.random() * Math.PI * 2, dist = Math.max(canvas.width, canvas.height) / 2 + 100;
+        const ex = player.x + Math.cos(ang)*dist, ey = player.y + Math.sin(ang)*dist;
+        const hp = (20 + (minutes * 30)) * lvlMult, spd = (80 + (minutes * 10)) * (1 + (player.level - 1) * 0.08), dmg = (10 + (minutes * 4)) * lvlMult;
+        let type = 'square', color = '#ff0055';
+        if (minutes > 1.5 && Math.random() > 0.6) { type = 'triangle'; color = '#aa00ff'; }
+        if (minutes > 3 && Math.random() > 0.7) color = '#ffaa00';
+        if (Math.random() < (0.03 * minutes + (player.level * 0.01))) {
+            enemies.push(new Enemy(ex, ey, hp * 6, spd * 0.85, dmg * 2, '#ff0000', 'boss'));
+        } else {
+            enemies.push(new Enemy(ex, ey, hp, spd, dmg, color, type));
+        }
+    }
+}
+
+function gameLoop(timestamp) {
+    if (gameState !== 'PLAYING') return;
+    const dt = Math.min((timestamp - lastTime) / 1000, 0.1); lastTime = timestamp;
+    gameTime += dt * 1000; timeSinceLastQuiz += dt * 1000;
+    expBar.style.width = `${Math.min(100, (timeSinceLastQuiz / QUIZ_INTERVAL) * 100)}%`;
+
+    if (timeSinceLastQuiz >= QUIZ_INTERVAL) { timeSinceLastQuiz = 0; triggerLevelUpQuiz(); return; }
+
+    const m = Math.floor(gameTime / 60000), s = Math.floor((gameTime % 60000) / 1000);
+    uiTimer.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    if (gameTime >= GAME_DURATION) { endGame(true); return; }
+
+    player.update(dt);
+    camera.x += ((player.x - canvas.width / 2) - camera.x) * 10 * dt; camera.y += ((player.y - canvas.height / 2) - camera.y) * 10 * dt;
+    spawnEnemies(dt); enemies.forEach(e => e.update(dt));
+    
+    for(let i=particles.length-1; i>=0; i--) if(!particles[i].update(dt)) particles.splice(i,1);
+    for(let i=projectiles.length-1; i>=0; i--) { const p = projectiles[i]; if(p.update) { p.update(dt); if(p.active===false) projectiles.splice(i,1); } }
+    for(let i=floatingTexts.length-1; i>=0; i--) { floatingTexts[i].life-=dt; floatingTexts[i].y-=30*dt; if(floatingTexts[i].life<=0) floatingTexts.splice(i,1); }
+
+    ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.save(); ctx.translate(-camera.x, -camera.y);
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.07)'; ctx.lineWidth = 1; const grid = 150;
+    ctx.beginPath();
+    for (let x = Math.floor(camera.x/grid)*grid; x < camera.x+canvas.width; x+=grid) { ctx.moveTo(x, camera.y); ctx.lineTo(x, camera.y+canvas.height); }
+    for (let y = Math.floor(camera.y/grid)*grid; y < camera.y+canvas.height; y+=grid) { ctx.moveTo(camera.x, y); ctx.lineTo(camera.x+canvas.width, y); }
+    ctx.stroke();
+
+    projectiles.forEach(p => { if(p.type === 'firepool') p.draw(ctx); });
+    projectiles.forEach(p => { if(p.type !== 'firepool') p.draw(ctx); });
+    enemies.forEach(e => e.draw(ctx)); player.draw(ctx); particles.forEach(p => p.draw(ctx));
+
+    ctx.font = 'bold 20px "Inter", sans-serif'; ctx.textAlign = 'center';
+    floatingTexts.forEach(ft => { ctx.shadowBlur=5; ctx.shadowColor='#000'; ctx.fillStyle=`rgba(255,255,255,${ft.life})`; ctx.fillText(ft.text, ft.x, ft.y); ctx.shadowBlur=0; });
+    ctx.restore();
+    animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+// --- 試煉面板與升級系統 ---
+function triggerLevelUpQuiz() {
+    gameState = 'LEVELUP'; modalContainer.classList.remove('hidden'); startScreen.classList.add('hidden'); gameoverScreen.classList.add('hidden'); levelupScreen.classList.remove('hidden'); btnContinue.classList.add('hidden', 'fade-in');
+    const container = document.getElementById('quiz-cards-container'); container.innerHTML = '';
+    currentUpgrades = []; quizResults = [null, null, null]; currentQuizzesData = []; activeQuizzes = 3;
+    
+    for(let i=0; i<3; i++) {
+        let upg = getRandomElement(['meteor', 'lightning', 'firestorm']); currentUpgrades.push(upg);
+        let qData = TopicConfig.generateQuestion(currentLang); currentQuizzesData.push(qData);
+        
+        const card = document.createElement('div'); card.id = `quiz-card-${i}`;
+        card.className = 'relative p-3 md:p-4 bg-black/60 border-2 rounded-2xl flex flex-col items-center transition-all duration-300 backdrop-blur-md w-full md:w-1/3';
+        card.style.borderColor = weaponDetails[upg].color; card.style.boxShadow = `0 0 20px ${weaponDetails[upg].color}40, inset 0 0 10px ${weaponDetails[upg].color}20`;
+
+        const title = document.createElement('div'); title.className = 'text-sm md:text-base font-black mb-2 drop-shadow-md tracking-wider flex items-center gap-2'; title.style.color = weaponDetails[upg].color;
+        title.innerHTML = `<span>${weaponDetails[upg].icon}</span> ${weaponDetails[upg].name} (Lv.${player.weapons[upg].active ? player.weapons[upg].level : 0} &rarr; ${(player.weapons[upg].active ? player.weapons[upg].level : 0)+1})`;
+
+        const qBox = document.createElement('div'); qBox.className = 'w-full min-h-[110px] flex flex-col items-center justify-center bg-gray-900/90 rounded-lg p-2 mb-3 border border-gray-700 shadow-inner overflow-x-auto text-white font-serif';
+        if (qData.svg) { const imgEl = document.createElement('div'); imgEl.innerHTML = qData.svg; imgEl.className = "mb-1 flex justify-center w-full"; qBox.appendChild(imgEl); }
+        const txtEl = document.createElement('div'); katex.render(`\\displaystyle{${qData.question}}`, txtEl, { throwOnError: false, displayMode: true }); qBox.appendChild(txtEl);
+
+        const grid = document.createElement('div'); grid.className = 'grid grid-cols-1 gap-2 w-full mt-auto';
+        qData.options.forEach((opt, optIdx) => {
+            const btn = document.createElement('button'); btn.className = 'p-2.5 bg-gray-800 border border-gray-600 rounded-lg transition-all text-white hover:bg-gray-700 hover:border-white shadow-md flex items-center justify-center min-h-[48px] font-serif relative overflow-hidden w-full text-sm';
+            katex.render(`\\displaystyle{${opt}}`, btn, { throwOnError: false });
+            btn.onclick = () => handleCardAnswer(i, optIdx === qData.correctIdx, card, btn, grid, qData.correctIdx);
+            grid.appendChild(btn);
+        });
+
+        card.append(title, qBox, grid); container.appendChild(card);
+    }
+
+    quizTimeLeft = 30; quizTimerBar.style.width = '100%'; quizTimerText.innerText = '30s';
+    clearInterval(quizTimerInterval);
+    quizTimerInterval = setInterval(() => {
+        quizTimeLeft--; quizTimerBar.style.width = `${(quizTimeLeft/30)*100}%`; quizTimerText.innerText = `${quizTimeLeft}s`;
+        if (quizTimeLeft <= 10) { quizTimerBar.classList.add('from-red-600', 'to-orange-500'); quizTimerBar.classList.remove('from-fuchsia-600', 'to-pink-500'); quizTimerText.classList.add('text-red-300', 'animate-ping'); }
+        else { quizTimerBar.classList.add('from-fuchsia-600', 'to-pink-500'); quizTimerBar.classList.remove('from-red-600', 'to-orange-500'); quizTimerText.classList.remove('text-red-300', 'animate-ping'); }
+        if (quizTimeLeft <= 0) {
+            clearInterval(quizTimerInterval);
+            for(let i=0; i<3; i++) if(quizResults[i] === null) handleCardAnswer(i, false, document.getElementById(`quiz-card-${i}`), null, document.getElementById(`quiz-card-${i}`).querySelector('.grid'), currentQuizzesData[i].correctIdx, true);
+        }
+    }, 1000);
+}
+
+function handleCardAnswer(index, isCorrect, card, clickedBtn, grid, correctIdx, isTimeout=false) {
+    if (quizResults[index] !== null) return;
+    quizResults[index] = isCorrect; activeQuizzes--;
+    grid.querySelectorAll('button').forEach((b, i) => {
+        b.disabled = true; b.classList.remove('hover:bg-gray-700', 'hover:border-white');
+        if (i === correctIdx) b.classList.add('bg-green-600/50', 'border-green-400', 'shadow-[0_0_15px_rgba(74,222,128,0.5)]');
+        else if (b === clickedBtn && !isCorrect) b.classList.add('bg-red-600/50', 'border-red-500', 'shadow-[0_0_15px_rgba(239,68,68,0.5)]');
+        else b.classList.add('opacity-40');
+    });
+
+    const stamp = document.createElement('div'); stamp.className = 'absolute -top-3 -right-3 text-4xl drop-shadow-[0_0_10px_rgba(0,0,0,0.8)] z-20 animate-bounce';
+    if (isCorrect) { stamp.innerHTML = '✅'; applyUpgrades([currentUpgrades[index]]); card.style.borderColor = '#4ade80'; card.style.boxShadow = '0 0 20px rgba(74, 222, 128, 0.4)'; }
+    else { stamp.innerHTML = isTimeout ? '⌛' : '❌'; card.style.borderColor = '#ef4444'; card.style.boxShadow = '0 0 20px rgba(239, 68, 68, 0.4)'; }
+    card.appendChild(stamp);
+    if (activeQuizzes <= 0) endQuizPhase();
+}
+
+function applyUpgrades(upgrades) {
+    upgrades.forEach(u => {
+        if (!player.weapons[u].active) { player.weapons[u].active = true; player.weapons[u].level = 1; if(u === 'meteor') player.weapons[u].count = 1; } 
+        else player.weapons[u].level++;
+        const uiBar = document.getElementById(weaponDetails[u].uiId);
+        if(uiBar) uiBar.style.width = `${Math.min(100, (player.weapons[u].level / 10) * 100)}%`;
+    });
+}
+
+function endQuizPhase() {
+    clearInterval(quizTimerInterval); player.level++; uiLevel.innerText = player.level;
+    const isEn = currentLang === 'en';
+    if (quizResults.filter(r => r === true).length === 3) {
+        const overlay = document.getElementById('perfect-reward-overlay');
+        document.getElementById('lbl-perfect-desc').innerText = isEn ? 'Select your trial reward:' : '請選擇你的試煉回報：';
+        document.getElementById('lbl-heal-title').innerText = isEn ? 'Restore 20 HP' : '回復 20 生命值';
+        document.getElementById('lbl-heal-sub').innerText = isEn ? 'Heal player by +20' : '補滿部分體力';
+        document.getElementById('lbl-shockwave-title').innerText = isEn ? '2s Shockwave Burst' : '2秒暴風衝擊波';
+        document.getElementById('lbl-shockwave-sub').innerText = isEn ? 'Continuous blast wave' : '持續推開擊退強敵';
+        overlay.classList.remove('hidden');
+
+        const resumeBattle = () => { overlay.classList.add('hidden'); levelupScreen.classList.add('hidden'); modalContainer.classList.add('hidden'); gameState = 'PLAYING'; lastTime = performance.now(); animationFrameId = requestAnimationFrame(gameLoop); };
+        document.getElementById('btn-reward-heal').onclick = () => { player.hp = Math.min(player.maxHp, player.hp + 20); floatingTexts.push({ x: player.x, y: player.y - 40, text: isEn ? '+20 HP RESTORED!' : '+20 生命值回復！', life: 2.5, color: '#4ade80' }); resumeBattle(); };
+        document.getElementById('btn-reward-shockwave').onclick = () => { activeShockwaveBurstTimer = 2.0; floatingTexts.push({ x: player.x, y: player.y - 40, text: isEn ? '2S SHOCKWAVE BURST!' : '2秒暴風衝擊波發動！', life: 2.5, color: '#ffee00' }); resumeBattle(); };
+    } else {
+        btnContinue.classList.remove('hidden'); btnContinue.classList.add('fade-in');
+    }
+}
+
+btnStartZh.addEventListener('click', () => startGame('zh'));
+btnStartEn.addEventListener('click', () => startGame('en'));
+btnRestart.addEventListener('click', () => startGame(currentLang));
+btnContinue.addEventListener('click', () => { levelupScreen.classList.add('hidden'); modalContainer.classList.add('hidden'); gameState = 'PLAYING'; lastTime = performance.now(); animationFrameId = requestAnimationFrame(gameLoop); });
+
+</script>
+</body>
+</html>
