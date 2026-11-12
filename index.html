@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Survivor - S1</title>
+    <title>Math Survivor - S1 Term 1</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- KaTeX -->
@@ -105,7 +105,7 @@
             <div class="text-xs md:text-sm text-gray-300 mb-6 md:mb-8 text-left bg-black/60 p-4 md:p-5 rounded-lg border border-gray-700 space-y-2">
                 <p>🕒 <strong>生存目標：</strong>生存 10 分鐘，解開知識封印。</p>
                 <p>🔫 <strong>武器系統：</strong>從粒子彈開始，答對解鎖神級武器。</p>
-                <p>⚡ <strong>心智試煉：</strong>每 5 秒強制觸發，30 秒自由挑戰 3 張卡牌。</p>
+                <p>⚡ <strong>心智試煉：</strong>每 5 秒強制觸發，60 秒自由挑戰 3 張卡牌。</p>
                 <p class="text-yellow-400 font-bold border-l-4 border-yellow-400 pl-2 mt-2">💥 3/3 答對滿分即可解鎖 / 升級【全屏衝擊波】！</p>
             </div>
             <div class="flex flex-col sm:flex-row gap-4 w-full">
@@ -117,11 +117,11 @@
         <!-- 試煉畫面 -->
         <div id="levelup-screen" class="hidden text-center p-3 md:p-6 bg-gray-900/95 border-2 border-fuchsia-500 rounded-xl shadow-[0_0_50px_rgba(255,0,255,0.4)] max-w-7xl w-[98%] max-h-[95vh] overflow-y-auto relative">
             <h2 id="lbl-quiz-title" class="text-2xl md:text-4xl font-black text-fuchsia-400 mb-1 tracking-widest pulse-text">心智試煉 LEVEL UP!</h2>
-            <p id="lbl-quiz-desc" class="text-gray-300 mb-4 text-xs md:text-base">30秒內選出正確概念步驟！三題全對可選擇特殊神技獎勵！</p>
+            <p id="lbl-quiz-desc" class="text-gray-300 mb-4 text-xs md:text-base">60秒內選出正確概念步驟！三題全對可選擇特殊神技獎勵！</p>
             
             <div class="w-full bg-gray-800 h-3 rounded-full mb-4 overflow-hidden border border-gray-600 relative">
                 <div id="quiz-timer-bar" class="h-full bg-gradient-to-r from-fuchsia-600 to-pink-500 w-full transition-all duration-1000 ease-linear"></div>
-                <div id="quiz-timer-text" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow-md">30s</div>
+                <div id="quiz-timer-text" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow-md">60s</div>
             </div>
 
             <div id="quiz-cards-container" class="flex flex-col md:flex-row gap-4 w-full justify-center min-h-[350px]"></div>
@@ -163,13 +163,12 @@
 <script>
 // ============================================================================
 // 💡 區塊 1：課題設定模組 (TOPIC CONFIGURATION) 
-// S1 Math Comprehensive Trainer (Step-by-Step Logic)
+// S1 Math Comprehensive Trainer (Step-by-Step Logic with Visual Geometry)
 // ============================================================================
 const TopicConfig = {
-    titleZh: '中一數學綜合訓練員',
-    titleEn: 'S1 MATH COMPREHENSIVE TRAINER',
+    titleZh: '中一數學第一學期訓練員',
+    titleEn: 'S1 MATH TERM 1 TRAINER',
     
-    // Maintain state for chaining step-by-step logic
     state: {
         0: { stage: 0, sharedVars: {} }, 
         1: { stage: 0, sharedVars: {} }, 
@@ -180,281 +179,290 @@ const TopicConfig = {
 
     randInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
 
-    generateSVG: function(type, vars, isEn) {
-        if (type === 'coord') {
-            return `<svg width="150" height="150" viewBox="0 0 150 150" class="mx-auto mt-1 mb-2">
-                <!-- X & Y Axis -->
-                <line x1="10" y1="75" x2="140" y2="75" stroke="#00ffff" stroke-width="2" />
-                <line x1="75" y1="10" x2="75" y2="140" stroke="#00ffff" stroke-width="2" />
-                <!-- Arrows -->
-                <polygon points="140,70 150,75 140,80" fill="#00ffff" />
-                <polygon points="70,10 75,0 80,10" fill="#00ffff" />
-                <!-- Labels -->
-                <text x="135" y="90" fill="#00ffff" font-size="14" font-weight="bold" font-family="monospace">x</text>
-                <text x="55" y="20" fill="#00ffff" font-size="14" font-weight="bold" font-family="monospace">y</text>
-                <!-- Points -->
-                <circle cx="${vars.px1}" cy="${vars.py1}" r="4" fill="#ff4500" />
-                <text x="${vars.px1}" y="${vars.py1 - 8}" fill="#ffea00" font-size="12" font-weight="bold" text-anchor="middle">A</text>
-                <circle cx="${vars.px2}" cy="${vars.py2}" r="4" fill="#ff4500" />
-                <text x="${vars.px2}" y="${vars.py2 - 8}" fill="#ffea00" font-size="12" font-weight="bold" text-anchor="middle">B</text>
-                <line x1="${vars.px1}" y1="${vars.py1}" x2="${vars.px2}" y2="${vars.py2}" stroke="#ffea00" stroke-width="2" stroke-dasharray="4,4" />
-            </svg>`;
+    // 進階 SVG 繪製系統：支援座標、顏色矩形、高光軸線與連線
+    generateSVG: function(config, isEn) {
+        const scale = 6;
+        const cx = (val) => 75 + val * scale;
+        const cy = (val) => 75 - val * scale;
+
+        let svg = `<svg width="150" height="150" viewBox="0 0 150 150" class="mx-auto mt-1 mb-2">`;
+        
+        // Highlight axis (yellow highlighter)
+        if (config.highlightAxis === 'x') {
+            svg += `<line x1="5" y1="75" x2="145" y2="75" stroke="#ffff00" stroke-width="10" opacity="0.4" />`;
+        } else if (config.highlightAxis === 'y') {
+            svg += `<line x1="75" y1="5" x2="75" y2="145" stroke="#ffff00" stroke-width="10" opacity="0.4" />`;
         }
-        return null;
+
+        // Axes
+        svg += `
+            <line x1="10" y1="75" x2="140" y2="75" stroke="#00ffff" stroke-width="2" />
+            <line x1="75" y1="10" x2="75" y2="140" stroke="#00ffff" stroke-width="2" />
+            <polygon points="140,70 150,75 140,80" fill="#00ffff" />
+            <polygon points="70,10 75,0 80,10" fill="#00ffff" />
+            <text x="135" y="90" fill="#00ffff" font-size="14" font-weight="bold" font-family="monospace">x</text>
+            <text x="55" y="20" fill="#00ffff" font-size="14" font-weight="bold" font-family="monospace">y</text>
+        `;
+
+        // Draw points and rects
+        const drawPoint = (pt, color, rectColor) => {
+            if (!pt) return '';
+            let px = cx(pt.x), py = cy(pt.y);
+            let res = '';
+            if (rectColor) {
+                // Draw dashed rectangle to axes
+                res += `<line x1="${px}" y1="${py}" x2="${px}" y2="75" stroke="${rectColor}" stroke-width="2" stroke-dasharray="4,4" opacity="0.8"/>`;
+                res += `<line x1="${px}" y1="${py}" x2="75" y2="${py}" stroke="${rectColor}" stroke-width="2" stroke-dasharray="4,4" opacity="0.8"/>`;
+            }
+            res += `<circle cx="${px}" cy="${py}" r="4" fill="${color}" />`;
+            res += `<text x="${px}" y="${py - 10}" fill="${color}" font-size="11" font-weight="bold" text-anchor="middle">${pt.label} (${pt.x}, ${pt.y})</text>`;
+            return res;
+        };
+
+        if (config.point1 && config.point2 && config.connectPoints) {
+            svg += `<line x1="${cx(config.point1.x)}" y1="${cy(config.point1.y)}" x2="${cx(config.point2.x)}" y2="${cy(config.point2.y)}" stroke="#ffea00" stroke-width="2" stroke-dasharray="4,4" />`;
+        }
+
+        svg += drawPoint(config.point1, '#ffea00', config.p1RectColor); 
+        svg += drawPoint(config.point2, '#ff4500', config.p2RectColor);
+
+        svg += `</svg>`;
+        return svg;
     },
 
     generateQuestion: function(lang) {
         const isEn = lang === 'en';
-        // 將出現概率調整為各佔 25% (0: 有向數, 1: 座標, 2: 代數, 3: 方程)
         const type = this.randInt(0, 3);
         let question = "", correct = "", wrongs = [], svg = null;
         let state = this.state[type];
 
+        const nonZeroRand = (min, max) => { let v=0; while(v===0) v = this.randInt(min, max); return v; };
+
         if (type === 0) { // Directed Numbers (有向數四則運算)
             if (state.stage === 0) {
-                let a = this.randInt(-10, 10);
-                let b = this.randInt(-6, -2); // Negative
-                let c = this.randInt(2, 6);   // Positive
-                state.sharedVars = { a, b, c, s1: b * c };
-                question = isEn ? `\\text{Step 1: Evaluate } (${b}) \\times ${c}` : `\\text{第一步: 計算 } (${b}) \\times ${c}`;
-                correct = `${b * c}`;
-                wrongs = [`${-(b * c)}`, `${b + c}`, `${b - c}`];
+                let subType = this.randInt(0, 2);
+                if (subType === 0) {
+                    let a = this.randInt(-10, 10); let b = this.randInt(-6, -2); let c = this.randInt(2, 6);
+                    state.sharedVars = { subType, a, b, c, s1: b * c };
+                    question = isEn ? `\\text{Step 1: Evaluate } (${b}) \\times ${c}` : `\\text{第一步: 計算 } (${b}) \\times ${c}`;
+                    correct = `${b * c}`; wrongs = [`${-(b * c)}`, `${b + c}`, `${b - c}`];
+                } else if (subType === 1) {
+                    let b = nonZeroRand(-5, 5); let a = b * this.randInt(-6, 6); let c = this.randInt(-10, -2);
+                    state.sharedVars = { subType, a, b, c, s1: a / b };
+                    question = isEn ? `\\text{Step 1: Evaluate } \\frac{${a}}{${b}}` : `\\text{第一步: 計算 } \\frac{${a}}{${b}}`;
+                    correct = `${a / b}`; wrongs = [`${-(a / b)}`, `${(a / b) + 2}`, `${Math.abs(a / b)}`];
+                } else {
+                    let a = this.randInt(5, 15); let b = this.randInt(3, 9);
+                    state.sharedVars = { subType, a, b, s1: b };
+                    question = isEn ? `\\text{Step 1: Simplify signs } -${a} - (-${b})` : `\\text{第一步: 化簡符號 } -${a} - (-${b})`;
+                    correct = `-${a} + ${b}`; wrongs = [`-${a} - ${b}`, `${a} + ${b}`, `${a} - ${b}`];
+                }
                 state.stage = 1;
             } else {
-                let { a, s1 } = state.sharedVars;
-                question = isEn ? `\\text{Step 2: Evaluate } ${a} - (${s1})` : `\\text{第二步: 計算 } ${a} - (${s1})`;
-                correct = `${a - s1}`;
-                wrongs = [`${a + s1}`, `${s1 - a}`, `${a - s1 + 2}`];
+                let vars = state.sharedVars;
+                if (vars.subType === 0) {
+                    question = isEn ? `\\begin{gathered} \\text{From: } (${vars.b} \\times ${vars.c}) = ${vars.s1} \\\\ \\text{Step 2: Evaluate } ${vars.a} - (${vars.s1}) \\end{gathered}` : `\\begin{gathered} \\text{承上: } (${vars.b} \\times ${vars.c}) = ${vars.s1} \\\\ \\text{第二步: 計算 } ${vars.a} - (${vars.s1}) \\end{gathered}`;
+                    correct = `${vars.a - vars.s1}`; wrongs = [`${vars.a + vars.s1}`, `${vars.s1 - vars.a}`, `${vars.a - vars.s1 + 2}`];
+                } else if (vars.subType === 1) {
+                    let cStr = vars.c < 0 ? `(${vars.c})` : vars.c;
+                    question = isEn ? `\\begin{gathered} \\text{From: } \\frac{${vars.a}}{${vars.b}} = ${vars.s1} \\\\ \\text{Step 2: Evaluate } ${vars.s1} + ${cStr} \\end{gathered}` : `\\begin{gathered} \\text{承上: } \\frac{${vars.a}}{${vars.b}} = ${vars.s1} \\\\ \\text{第二步: 計算 } ${vars.s1} + ${cStr} \\end{gathered}`;
+                    correct = `${vars.s1 + vars.c}`; wrongs = [`${vars.s1 - vars.c}`, `${-(vars.s1 + vars.c)}`, `${vars.c - vars.s1}`];
+                } else {
+                    question = isEn ? `\\begin{gathered} \\text{From: } -${vars.a} + ${vars.b} \\\\ \\text{Step 2: Evaluate} \\end{gathered}` : `\\begin{gathered} \\text{承上: } -${vars.a} + ${vars.b} \\\\ \\text{第二步: 求值} \\end{gathered}`;
+                    correct = `${-vars.a + vars.b}`; wrongs = [`${-vars.a - vars.b}`, `${vars.a + vars.b}`, `${vars.a - vars.b}`];
+                }
                 state.stage = 0;
             }
         }
         else if (type === 1) { // Coordinate Geometry & Transformations (座標系統與變換)
             if (state.stage === 0) {
-                let subTopic = this.randInt(0, 1); // 0: Quadrant/Distance, 1: Transformations
+                let subTopic = this.randInt(0, 1);
                 if (subTopic === 0) {
-                    let common = this.randInt(-5, 5);
-                    if (common === 0) common = 2; // avoid 0 to stay strictly in a quadrant
-                    let v1 = this.randInt(-8, -2);
-                    let v2 = this.randInt(2, 8);
                     let isHoriz = Math.random() < 0.5;
+                    let common = nonZeroRand(-7, 7);
+                    let v1 = nonZeroRand(-8, 8); 
+                    let v2 = nonZeroRand(-8, 8);
+                    while(v2 === v1) v2 = nonZeroRand(-8, 8); // Ensure different points
                     
-                    let px1 = isHoriz ? v1 : common;
-                    let py1 = isHoriz ? common : v1;
-                    let px2 = isHoriz ? v2 : common;
-                    let py2 = isHoriz ? common : v2;
+                    let px1 = isHoriz ? v1 : common; let py1 = isHoriz ? common : v1;
+                    let px2 = isHoriz ? v2 : common; let py2 = isHoriz ? common : v2;
                     state.sharedVars = { subTopic, px1, py1, px2, py2, v1, v2 };
                     
                     question = isEn ? `\\text{Quadrant of } A(${px1}, ${py1})` : `\\text{點 } A(${px1}, ${py1}) \\text{ 的象限}`;
-                    
                     let qRoman = (px1 > 0 && py1 > 0) ? "I" : (px1 < 0 && py1 > 0) ? "II" : (px1 < 0 && py1 < 0) ? "III" : "IV";
                     let qZh = (px1 > 0 && py1 > 0) ? "一" : (px1 < 0 && py1 > 0) ? "二" : (px1 < 0 && py1 < 0) ? "三" : "四";
                     
                     correct = isEn ? `\\text{Quadrant } ${qRoman}` : `\\text{第}${qZh}\\text{象限}`;
+                    let allRomans = ["I", "II", "III", "IV"]; let allZhs = ["一", "二", "三", "四"];
+                    if (isEn) wrongs = allRomans.filter(quad => quad !== qRoman).map(quad => `\\text{Quadrant } ${quad}`);
+                    else wrongs = allZhs.filter(quad => quad !== qZh).map(quad => `\\text{第}${quad}\\text{象限}`);
                     
-                    let allRomans = ["I", "II", "III", "IV"];
-                    let allZhs = ["一", "二", "三", "四"];
-                    
-                    if (isEn) {
-                        wrongs = allRomans.filter(quad => quad !== qRoman).map(quad => `\\text{Quadrant } ${quad}`);
-                    } else {
-                        wrongs = allZhs.filter(quad => quad !== qZh).map(quad => `\\text{第}${quad}\\text{象限}`);
-                    }
-                    
-                    svg = this.generateSVG('coord', {px1: 75 + px1 * 5, py1: 75 - py1 * 5, px2: 75 + px2 * 5, py2: 75 - py2 * 5}, isEn);
+                    svg = this.generateSVG({ point1: {x: px1, y: py1, label: 'A'} }, isEn);
                     state.stage = 1;
                 } else {
-                    let px1 = this.randInt(-5, 5); if (px1 === 0) px1 = 3;
-                    let py1 = this.randInt(-5, 5); if (py1 === 0) py1 = -2;
-                    let transType = this.randInt(0, 2); // 0: Translate X, 1: Translate Y, 2: Reflect
-                    let px2 = px1, py2 = py1;
+                    let px1 = nonZeroRand(-5, 5); let py1 = nonZeroRand(-5, 5);
+                    let transType = this.randInt(0, 2); 
+                    let px2 = px1, py2 = py1, highlight = null;
                     
                     if (transType === 0) { // Translate X
-                        let k = this.randInt(2, 6);
-                        let isRight = Math.random() < 0.5;
-                        px2 = px1 + (isRight ? k : -k);
-                        let dirEn = isRight ? "right" : "left";
-                        let dirZh = isRight ? "右" : "左";
+                        let k = this.randInt(2, 6); let isRight = Math.random() < 0.5; px2 = px1 + (isRight ? k : -k);
+                        let dirEn = isRight ? "right" : "left"; let dirZh = isRight ? "右" : "左";
                         question = isEn ? `\\text{Step 1: Translate } A(${px1}, ${py1}) \\text{ ${dirEn} by } ${k}` : `\\text{第一步: 將 } A(${px1}, ${py1}) \\text{ 向${dirZh}平移 } ${k} \\text{ 單位}`;
                     } else if (transType === 1) { // Translate Y
-                        let k = this.randInt(2, 6);
-                        let isUp = Math.random() < 0.5;
-                        py2 = py1 + (isUp ? k : -k);
-                        let dirEn = isUp ? "up" : "down";
-                        let dirZh = isUp ? "上" : "下";
+                        let k = this.randInt(2, 6); let isUp = Math.random() < 0.5; py2 = py1 + (isUp ? k : -k);
+                        let dirEn = isUp ? "up" : "down"; let dirZh = isUp ? "上" : "下";
                         question = isEn ? `\\text{Step 1: Translate } A(${px1}, ${py1}) \\text{ ${dirEn} by } ${k}` : `\\text{第一步: 將 } A(${px1}, ${py1}) \\text{ 向${dirZh}平移 } ${k} \\text{ 單位}`;
                     } else { // Reflect
-                        let isXAxis = Math.random() < 0.5;
-                        if (isXAxis) {
-                            py2 = -py1;
-                            question = isEn ? `\\text{Step 1: Reflect } A(${px1}, ${py1}) \\text{ over } x\\text{-axis}` : `\\text{第一步: 將 } A(${px1}, ${py1}) \\text{ 沿 } x \\text{ 軸反射}`;
-                        } else {
-                            px2 = -px1;
-                            question = isEn ? `\\text{Step 1: Reflect } A(${px1}, ${py1}) \\text{ over } y\\text{-axis}` : `\\text{第一步: 將 } A(${px1}, ${py1}) \\text{ 沿 } y \\text{ 軸反射}`;
-                        }
+                        let isXAxis = Math.random() < 0.5; highlight = isXAxis ? 'x' : 'y';
+                        if (isXAxis) { py2 = -py1; question = isEn ? `\\text{Step 1: Reflect } A(${px1}, ${py1}) \\text{ over } x\\text{-axis}` : `\\text{第一步: 將 } A(${px1}, ${py1}) \\text{ 沿 } x \\text{ 軸反射}`; } 
+                        else { px2 = -px1; question = isEn ? `\\text{Step 1: Reflect } A(${px1}, ${py1}) \\text{ over } y\\text{-axis}` : `\\text{第一步: 將 } A(${px1}, ${py1}) \\text{ 沿 } y \\text{ 軸反射}`; }
                     }
-                    
-                    correct = `(${px2}, ${py2})`;
-                    wrongs = [`(${py2}, ${px2})`, `(${-px2}, ${py2})`, `(${px2}, ${-py2})`, `(${-px2}, ${-py2})`];
-                    state.sharedVars = { subTopic, px2, py2 };
+                    correct = `(${px2}, ${py2})`; wrongs = [`(${py2}, ${px2})`, `(${-px2}, ${py2})`, `(${px2}, ${-py2})`, `(${-px2}, ${-py2})`];
+                    svg = this.generateSVG({ point1: {x: px1, y: py1, label: 'A'}, highlightAxis: highlight }, isEn);
+                    state.sharedVars = { subTopic, px2, py2, transType };
                     state.stage = 1;
                 }
             } else if (state.stage === 1) {
                 let vars = state.sharedVars;
                 if (vars.subTopic === 0) {
                     let { px1, py1, px2, py2, v1, v2 } = vars;
-                    let larger = Math.max(v1, v2);
-                    let smaller = Math.min(v1, v2);
-                    question = isEn ? `\\text{Step 1: Distance exp. from } A(${px1}, ${py1}) \\text{ to } B(${px2}, ${py2})` : `\\text{第一步: } A(${px1}, ${py1}) \\text{ 至 } B(${px2}, ${py2}) \\text{ 的距離表達式}`;
-                    
+                    let larger = Math.max(v1, v2), smaller = Math.min(v1, v2);
+                    question = isEn ? `\\begin{gathered} \\text{Step 1: Distance exp.} \\\\ \\text{from } A(${px1}, ${py1}) \\text{ to } B(${px2}, ${py2}) \\end{gathered}` : `\\begin{gathered} \\text{第一步: } A(${px1}, ${py1}) \\text{ 至 } \\\\ B(${px2}, ${py2}) \\text{ 的距離表達式} \\end{gathered}`;
                     let smallerStr = smaller < 0 ? `(${smaller})` : `${smaller}`;
-                    
                     correct = `AB = ${larger} - ${smallerStr}`;
-                    wrongs = [
-                        `AB = (${px1}, ${py1}) - (${px2}, ${py2})`,
-                        `AB = ${smaller} - ${larger}`, 
-                        `AB = ${larger} + ${smallerStr}`
-                    ];
-                    
-                    svg = this.generateSVG('coord', {px1: 75 + px1 * 5, py1: 75 - py1 * 5, px2: 75 + px2 * 5, py2: 75 - py2 * 5}, isEn);
+                    wrongs = [`AB = (${px1}, ${py1}) - (${px2}, ${py2})`, `AB = ${smaller} - ${larger}`, `AB = ${larger} + ${smallerStr}`];
+                    svg = this.generateSVG({ point1: {x: px1, y: py1, label: 'A'}, point2: {x: px2, y: py2, label: 'B'}, connectPoints: true }, isEn);
                     state.stage = 2;
                 } else {
-                    let { px2, py2 } = vars; // New point from step 1
-                    let rotType = this.randInt(0, 2); // 0: 90, 1: 180, 2: 270
-                    let isCW = Math.random() < 0.5; // Clockwise
+                    let { px2, py2 } = vars; let rotType = this.randInt(0, 2); let isCW = Math.random() < 0.5; 
                     let px3, py3, angle;
+                    if (rotType === 0) { angle = 90; if (isCW) { px3 = py2; py3 = -px2; } else { px3 = -py2; py3 = px2; } } 
+                    else if (rotType === 1) { angle = 180; px3 = -px2; py3 = -py2; } 
+                    else { angle = 270; if (isCW) { px3 = -py2; py3 = px2; } else { px3 = py2; py3 = -px2; } }
                     
-                    if (rotType === 0) {
-                        angle = 90;
-                        if (isCW) { px3 = py2; py3 = -px2; } else { px3 = -py2; py3 = px2; }
-                    } else if (rotType === 1) {
-                        angle = 180;
-                        px3 = -px2; py3 = -py2;
-                    } else {
-                        angle = 270;
-                        if (isCW) { px3 = -py2; py3 = px2; } else { px3 = py2; py3 = -px2; }
-                    }
+                    let dirEn = isCW ? "clockwise" : "anti-clockwise"; let dirZh = isCW ? "順時針" : "逆時針";
+                    if (angle === 180) { question = isEn ? `\\begin{gathered} \\text{From } A'(${px2}, ${py2}) \\\\ \\text{Step 2: Rotate } 180^\\circ \\text{ about origin} \\end{gathered}` : `\\begin{gathered} \\text{承上點 } A'(${px2}, ${py2}) \\\\ \\text{第二步: 繞原點旋轉 } 180^\\circ \\end{gathered}`; } 
+                    else { question = isEn ? `\\begin{gathered} \\text{From } A'(${px2}, ${py2}) \\\\ \\text{Step 2: Rotate } ${angle}^\\circ \\text{ } ${dirEn} \\end{gathered}` : `\\begin{gathered} \\text{承上點 } A'(${px2}, ${py2}) \\\\ \\text{第二步: } ${dirZh} \\text{ 旋轉 } ${angle}^\\circ \\end{gathered}`; }
                     
-                    let dirEn = isCW ? "clockwise" : "anti-clockwise";
-                    let dirZh = isCW ? "順時針" : "逆時針";
-                    if (angle === 180) {
-                        question = isEn ? `\\text{Step 2: Rotate } (${px2}, ${py2}) \\text{ by } 180^\\circ \\text{ about origin}` : `\\text{第二步: 將 } (${px2}, ${py2}) \\text{ 繞原點旋轉 } 180^\\circ`;
-                    } else {
-                        question = isEn ? `\\text{Step 2: Rotate } (${px2}, ${py2}) \\text{ } ${angle}^\\circ \\text{ } ${dirEn}` : `\\text{第二步: 將 } (${px2}, ${py2}) \\text{ } ${dirZh} \\text{ 旋轉 } ${angle}^\\circ`;
-                    }
-                    
-                    correct = `(${px3}, ${py3})`;
-                    wrongs = [`(${py3}, ${px3})`, `(${-px3}, ${py3})`, `(${px3}, ${-py3})`, `(${-px3}, ${-py3})`];
-                    state.stage = 0;
+                    correct = `(${px3}, ${py3})`; wrongs = [`(${py3}, ${px3})`, `(${-px3}, ${py3})`, `(${px3}, ${-py3})`, `(${-px3}, ${-py3})`];
+                    svg = this.generateSVG({ point1: {x: px2, y: py2, label: "A'"}, p1RectColor: '#00bfff' }, isEn);
+                    state.sharedVars.px3 = px3; state.sharedVars.py3 = py3;
+                    state.stage = 2; 
                 }
             } else if (state.stage === 2) {
                 let vars = state.sharedVars;
-                let { px1, py1, px2, py2, v1, v2 } = vars;
-                let dist = Math.abs(v2 - v1);
-                question = isEn ? `\\text{Step 2: Calculate distance } AB` : `\\text{第二步: 計算該距離}`;
-                correct = `AB = ${dist}`;
-                wrongs = [`AB = ${v1 + v2}`, `AB = ${-dist}`, `AB = ${dist + 2}`];
-                svg = this.generateSVG('coord', {px1: 75 + px1 * 5, py1: 75 - py1 * 5, px2: 75 + px2 * 5, py2: 75 - py2 * 5}, isEn);
-                state.stage = 0;
+                if (vars.subTopic === 0) {
+                    let { px1, py1, px2, py2, v1, v2 } = vars; let dist = Math.abs(v2 - v1);
+                    question = isEn ? `\\text{Step 2: Calculate distance } AB` : `\\text{第二步: 計算該距離}`;
+                    correct = `AB = ${dist}`; wrongs = [`AB = ${v1 + v2}`, `AB = ${-dist}`, `AB = ${dist + 2}`];
+                    svg = this.generateSVG({ point1: {x: px1, y: py1, label: 'A'}, point2: {x: px2, y: py2, label: 'B'}, connectPoints: true }, isEn);
+                    state.stage = 0;
+                } else {
+                    let { px3, py3 } = vars; let askX = Math.random() < 0.5;
+                    let axisEn = askX ? "x-axis" : "y-axis"; let axisZh = askX ? "x 軸" : "y 軸";
+                    question = isEn ? `\\begin{gathered} \\text{Step 3: Distance from} \\\\ A''(${px3}, ${py3}) \\text{ to } ${axisEn} \\end{gathered}` : `\\begin{gathered} \\text{第三步: 終點 } A''(${px3}, ${py3}) \\\\ \\text{與 } ${axisZh} \\text{ 的距離} \\end{gathered}`;
+                    let ans = askX ? Math.abs(py3) : Math.abs(px3);
+                    correct = `${ans}`; wrongs = [`${-ans}`, `${Math.abs(askX ? px3 : py3)}`, `${ans + 1}`];
+                    svg = this.generateSVG({ point1: {x: px3, y: py3, label: "A''"}, p1RectColor: '#ff0055' }, isEn);
+                    state.stage = 0;
+                }
             }
         }
         else if (type === 2) { // Algebra (代數運算與展開)
             if (state.stage === 0) {
                 let subType = this.randInt(0, 2);
-                
                 if (subType === 0) {
-                    // 展開題型 (原有)
-                    let a = this.randInt(-5, -2);
-                    let b = this.randInt(2, 5);
-                    let c = this.randInt(2, 5);
-                    let d = this.randInt(2, 5);
-                    let s1 = a * b; // Negative
-                    let s2 = -a * c; // Positive
-                    state.sharedVars = { subType, d, s1, s2 };
-                    
+                    let a = this.randInt(-5, -2); let b = this.randInt(2, 5); let c = this.randInt(2, 5); let d = this.randInt(2, 5);
+                    state.sharedVars = { subType, d, s1: a * b, s2: -a * c };
                     question = isEn ? `\\text{Step 1: Expand } ${a}(${b}x - ${c}y)` : `\\text{第一步: 展開 } ${a}(${b}x - ${c}y)`;
-                    correct = `${s1}x + ${s2}y`;
-                    wrongs = [`${s1}x - ${s2}y`, `${-s1}x + ${s2}y`, `${s1}x + ${c}y`];
+                    correct = `${a*b}x + ${-a*c}y`; wrongs = [`${a*b}x - ${-a*c}y`, `${-a*b}x + ${-a*c}y`, `${a*b}x + ${c}y`];
                 } else if (subType === 1) {
-                    // 代數乘法與有向數: 例如 x * (-x) * cy * (dy)
-                    let c = this.randInt(2, 5);
-                    let d = -this.randInt(2, 5); // 負數
-                    
-                    state.sharedVars = { subType, c, d, part2: c * d };
-                    
-                    question = isEn ? `\\text{Step 1: Simplify } x \\times (-x)` : `\\text{第一步: 化簡 } x \\times (-x)`;
-                    correct = `-x^2`;
-                    wrongs = [`x^2`, `-2x`, `2x`];
+                    let a = this.randInt(3, 7); let b = this.randInt(4, 8); let c = this.randInt(2, 4);
+                    state.sharedVars = { subType, a, b, c, s1: b * c };
+                    question = isEn ? `\\text{Step 1: Evaluate } ${b}x \\times ${c}` : `\\text{第一步: 計算 } ${b}x \\times ${c}`;
+                    correct = `${b*c}x`; wrongs = [`${b+c}x`, `${-(b*c)}x`, `${b*c}`];
                 } else {
-                    // 四則混合運算: 例如 ay - by * c + (d)
-                    let a = this.randInt(2, 6);
-                    let b = this.randInt(3, 7);
-                    let c = this.randInt(2, 4);
-                    let d = -this.randInt(5, 12); // 負數
-                    
-                    state.sharedVars = { subType, a, b, c, d, mult: b * c };
-                    
-                    question = isEn ? `\\text{Step 1: Evaluate } ${b}y \\times ${c}` : `\\text{第一步: 計算 } ${b}y \\times ${c}`;
-                    correct = `${b*c}y`;
-                    wrongs = [`${b+c}y`, `${-(b*c)}y`, `${b*c}`];
+                    let a = this.randInt(2, 5); let b = this.randInt(-4, -2);
+                    state.sharedVars = { subType, a, b, s1: a * b };
+                    question = isEn ? `\\text{Step 1: Simplify } ${a}x \\times (${b}x)` : `\\text{第一步: 化簡 } ${a}x \\times (${b}x)`;
+                    correct = `${a*b}x^2`; wrongs = [`${a*b}x`, `${a+b}x^2`, `${-(a*b)}x^2`];
                 }
                 state.stage = 1;
             } else {
                 let vars = state.sharedVars;
                 if (vars.subType === 0) {
-                    let { d, s1, s2 } = vars;
-                    question = isEn ? `\\text{Step 2: Simplify } (${s1}x + ${s2}y) - ${d}x` : `\\text{第二步: 化簡 } (${s1}x + ${s2}y) - ${d}x`;
-                    correct = `${s1 - d}x + ${s2}y`;
-                    wrongs = [`${s1 + d}x + ${s2}y`, `${s1 - d}x - ${s2}y`, `${s1}x + ${s2 - d}y`];
+                    question = isEn ? `\\begin{gathered} \\text{From: } ${vars.s1}x + ${vars.s2}y \\\\ \\text{Step 2: Simplify } (${vars.s1}x + ${vars.s2}y) - ${vars.d}x \\end{gathered}` : `\\begin{gathered} \\text{承上: } ${vars.s1}x + ${vars.s2}y \\\\ \\text{第二步: 化簡 } (${vars.s1}x + ${vars.s2}y) - ${vars.d}x \\end{gathered}`;
+                    correct = `${vars.s1 - vars.d}x + ${vars.s2}y`; wrongs = [`${vars.s1 + vars.d}x + ${vars.s2}y`, `${vars.s1 - vars.d}x - ${vars.s2}y`, `${vars.s1}x + ${vars.s2 - vars.d}y`];
                 } else if (vars.subType === 1) {
-                    let { c, d, part2 } = vars;
-                    question = isEn ? `\\text{Step 2: Multiply } (-x^2) \\times ${c}y \\times (${d}y)` : `\\text{第二步: 計算 } (-x^2) \\times ${c}y \\times (${d}y)`;
-                    let finalCoeff = -1 * part2;
-                    correct = `${finalCoeff}x^2y^2`;
-                    wrongs = [`${-finalCoeff}x^2y^2`, `${finalCoeff}xy`, `${finalCoeff}x^2y`];
+                    question = isEn ? `\\begin{gathered} \\text{From: } ${vars.s1}x \\\\ \\text{Step 2: Simplify } ${vars.a}x - ${vars.s1}x \\end{gathered}` : `\\begin{gathered} \\text{承上: } ${vars.s1}x \\\\ \\text{第二步: 化簡 } ${vars.a}x - ${vars.s1}x \\end{gathered}`;
+                    correct = `${vars.a - vars.s1}x`; wrongs = [`${vars.a + vars.s1}x`, `${vars.s1 - vars.a}x`, `${vars.a - vars.s1}`];
                 } else {
-                    let { a, b, c, d, mult } = vars;
-                    question = isEn ? `\\text{Step 2: Simplify } ${a}y - ${mult}y + (${d})` : `\\text{第二步: 化簡 } ${a}y - ${mult}y + (${d})`;
-                    let finalCoeff = a - mult;
-                    correct = `${finalCoeff}y - ${Math.abs(d)}`;
-                    wrongs = [`${finalCoeff}y + ${Math.abs(d)}`, `${a + mult}y - ${Math.abs(d)}`, `${finalCoeff - Math.abs(d)}y`];
+                    question = isEn ? `\\begin{gathered} \\text{From: } ${vars.s1}x^2 \\\\ \\text{Step 2: Multiply } (${vars.s1}x^2) \\times (-y) \\end{gathered}` : `\\begin{gathered} \\text{承上: } ${vars.s1}x^2 \\\\ \\text{第二步: 計算 } (${vars.s1}x^2) \\times (-y) \\end{gathered}`;
+                    correct = `${-vars.s1}x^2y`; wrongs = [`${vars.s1}x^2y`, `${-vars.s1}xy^2`, `${-vars.s1}xy`];
                 }
                 state.stage = 0;
             }
         }
-        else if (type === 3) { // Equations (方程求解 - Cross Multiply)
+        else if (type === 3) { // Equations (方程求解 - 多樣化)
             if (state.stage === 0) { 
-                let xAns = this.randInt(1, 5); // Kept positive to avoid x + -B formatting issue
-                let A = this.randInt(1, 5);
-                if ((Math.abs(xAns + 3 * A) % 2) !== 0) A++; 
-                let B = (xAns + 3 * A) / 2;
-                state.sharedVars = { A, B };
-                
-                question = isEn ? `\\text{Step 1: Cross-multiply } \\frac{x+${A}}{2} = \\frac{x+${B}}{3}` : `\\text{第一步 (交叉相乘): } \\frac{x+${A}}{2} = \\frac{x+${B}}{3}`;
-                correct = `3(x+${A}) = 2(x+${B})`;
-                wrongs = [`2(x+${A}) = 3(x+${B})`, `3(x+${A}) = x+${B}`, `x+${A} = 2(x+${B})`];
-                state.stage = 1;
+                let subType = this.randInt(0, 2); // 0: Cross Multiply, 1: Common Denom, 2: Word Problem
+                if (subType === 0) {
+                    let A = this.randInt(1, 5); let B = this.randInt(2, 6);
+                    state.sharedVars = { subType, A, B };
+                    question = isEn ? `\\text{Step 1: Cross-multiply } \\frac{x+${A}}{2} = \\frac{x+${B}}{3}` : `\\text{第一步 (交叉相乘): } \\frac{x+${A}}{2} = \\frac{x+${B}}{3}`;
+                    correct = `3(x+${A}) = 2(x+${B})`; wrongs = [`2(x+${A}) = 3(x+${B})`, `3(x+${A}) = x+${B}`, `x+${A} = 2(x+${B})`];
+                    state.stage = 1;
+                } else if (subType === 1) {
+                    let A = this.randInt(1, 5); let B = this.randInt(1, 5); let C = this.randInt(1, 5);
+                    state.sharedVars = { subType, A, B, C };
+                    question = isEn ? `\\begin{gathered} \\text{Step 1: Common denom.} \\\\ \\text{for } \\frac{x+${A}}{2} - \\frac{x-${B}}{3} = ${C} \\end{gathered}` : `\\begin{gathered} \\text{第一步: 將以下通分母} \\\\ \\frac{x+${A}}{2} - \\frac{x-${B}}{3} = ${C} \\end{gathered}`;
+                    correct = `\\frac{3(x+${A}) - 2(x-${B})}{6} = ${C}`; wrongs = [`\\frac{3(x+${A}) - 2(x-${B})}{5} = ${C}`, `\\frac{2(x+${A}) - 3(x-${B})}{6} = ${C}`, `\\frac{3(x+${A}) + 2(x-${B})}{6} = ${C}`];
+                    state.stage = 1;
+                } else {
+                    // Word Problems - one stage only
+                    let wpType = this.randInt(0, 2);
+                    if (wpType === 0) {
+                        let ans = this.randInt(10, 20); let add = this.randInt(3, 8);
+                        question = isEn ? `\\begin{gathered} \\text{The sum of } x \\text{ and } ${add} \\\\ \\text{is equal to } ${ans}. \\\\ \\text{Setup the equation.} \\end{gathered}` : `\\begin{gathered} \\text{某數 } x \\text{ 與 } ${add} \\text{ 的和} \\\\ \\text{等於 } ${ans}\\text{。} \\\\ \\text{請列出方程。} \\end{gathered}`;
+                        correct = `x + ${add} = ${ans}`; wrongs = [`x - ${add} = ${ans}`, `${add}x = ${ans}`, `\\frac{x}{${add}} = ${ans}`];
+                    } else if (wpType === 1) {
+                        let less = this.randInt(2, 5); let ans = this.randInt(10, 15);
+                        question = isEn ? `\\begin{gathered} \\text{Subtract } ${less} \\text{ from} \\\\ \\text{twice of } x \\text{ gives } ${ans}. \\\\ \\text{Setup equation.} \\end{gathered}` : `\\begin{gathered} \\text{將 } x \\text{ 的兩倍} \\\\ \\text{減去 } ${less} \\text{，結果是 } ${ans}\\text{。} \\\\ \\text{請列出方程。} \\end{gathered}`;
+                        correct = `2x - ${less} = ${ans}`; wrongs = [`${less} - 2x = ${ans}`, `2(x - ${less}) = ${ans}`, `x - 2(${less}) = ${ans}`];
+                    } else {
+                        let div = this.randInt(2, 4); let add = this.randInt(2, 6); let ans = this.randInt(8, 12);
+                        question = isEn ? `\\begin{gathered} x \\text{ divided by } ${div}\\text{,} \\\\ \\text{plus } ${add}\\text{, gives } ${ans}. \\\\ \\text{Setup equation.} \\end{gathered}` : `\\begin{gathered} \\text{將 } x \\text{ 除以 } ${div} \\text{，} \\\\ \\text{加上 } ${add} \\text{，結果是 } ${ans}\\text{。} \\\\ \\text{請列出方程。} \\end{gathered}`;
+                        correct = `\\frac{x}{${div}} + ${add} = ${ans}`; wrongs = [`\\frac{x+${add}}{${div}} = ${ans}`, `\\frac{x}{${add}} + ${div} = ${ans}`, `${div}x + ${add} = ${ans}`];
+                    }
+                    state.stage = 0; // Word problems finish here
+                }
             } else if (state.stage === 1) { 
-                let { A, B } = state.sharedVars;
-                question = isEn ? `\\text{Step 2: Expand } 3(x+${A}) = 2(x+${B})` : `\\text{第二步: 展開 } 3(x+${A}) = 2(x+${B})`;
-                correct = `3x + ${3 * A} = 2x + ${2 * B}`;
-                wrongs = [`3x + ${A} = 2x + ${B}`, `3x + ${3 * A} = 2x + ${B}`, `3x + ${A} = 2x + ${2 * B}`];
-                state.stage = 2;
+                let vars = state.sharedVars;
+                if (vars.subType === 0) {
+                    question = isEn ? `\\begin{gathered} \\text{From: } 3(x+${vars.A}) = 2(x+${vars.B}) \\\\ \\text{Step 2: Expand} \\end{gathered}` : `\\begin{gathered} \\text{承上: } 3(x+${vars.A}) = 2(x+${vars.B}) \\\\ \\text{第二步: 展開括號} \\end{gathered}`;
+                    correct = `3x + ${3 * vars.A} = 2x + ${2 * vars.B}`; wrongs = [`3x + ${vars.A} = 2x + ${vars.B}`, `3x + ${3 * vars.A} = 2x + ${vars.B}`, `3x + ${vars.A} = 2x + ${2 * vars.B}`];
+                    state.stage = 2;
+                } else {
+                    question = isEn ? `\\begin{gathered} \\text{From: } \\frac{3(x+${vars.A}) - 2(x-${vars.B})}{6} = ${vars.C} \\\\ \\text{Step 2: Multiply 6 & Expand} \\end{gathered}` : `\\begin{gathered} \\text{承上: } \\frac{3(x+${vars.A}) - 2(x-${vars.B})}{6} = ${vars.C} \\\\ \\text{第二步: 乘 6 並展開分子} \\end{gathered}`;
+                    correct = `3x + ${3*vars.A} - 2x + ${2*vars.B} = ${6*vars.C}`; wrongs = [`3x + ${3*vars.A} - 2x - ${2*vars.B} = ${6*vars.C}`, `3x + ${vars.A} - 2x + ${vars.B} = ${6*vars.C}`, `3x + ${3*vars.A} - 2x + ${2*vars.B} = ${vars.C}`];
+                    state.stage = 2;
+                }
             } else if (state.stage === 2) {
-                let { A, B } = state.sharedVars;
-                question = isEn ? `\\text{Step 3: Move terms in } 3x + ${3 * A} = 2x + ${2 * B}` : `\\text{第三步: 將 } 3x + ${3 * A} = 2x + ${2 * B} \\text{ 移項}`;
-                correct = `3x - 2x = ${2 * B} - ${3 * A}`;
-                wrongs = [
-                    `3x + 2x = ${2 * B} + ${3 * A}`, 
-                    `3x - 2x = ${2 * B} + ${3 * A}`, 
-                    `2x - 3x = ${3 * A} - ${2 * B}`
-                ];
-                state.stage = 3;
+                let vars = state.sharedVars;
+                if (vars.subType === 0) {
+                    question = isEn ? `\\begin{gathered} \\text{From: } 3x + ${3 * vars.A} = 2x + ${2 * vars.B} \\\\ \\text{Step 3: Move terms} \\end{gathered}` : `\\begin{gathered} \\text{承上: } 3x + ${3 * vars.A} = 2x + ${2 * vars.B} \\\\ \\text{第三步: 將 } x \\text{ 移項} \\end{gathered}`;
+                    correct = `3x - 2x = ${2 * vars.B} - ${3 * vars.A}`; wrongs = [`3x + 2x = ${2 * vars.B} + ${3 * vars.A}`, `3x - 2x = ${2 * vars.B} + ${3 * vars.A}`, `2x - 3x = ${3 * vars.A} - ${2 * vars.B}`];
+                    state.stage = 3;
+                } else {
+                    question = isEn ? `\\begin{gathered} \\text{From: } 3x + ${3*vars.A} - 2x + ${2*vars.B} = ${6*vars.C} \\\\ \\text{Step 3: Simplify and Move} \\end{gathered}` : `\\begin{gathered} \\text{承上: } 3x + ${3*vars.A} - 2x + ${2*vars.B} = ${6*vars.C} \\\\ \\text{第三步: 化簡並移項} \\end{gathered}`;
+                    correct = `x = ${6*vars.C} - ${3*vars.A} - ${2*vars.B}`; wrongs = [`x = ${6*vars.C} + ${3*vars.A} - ${2*vars.B}`, `x = ${6*vars.C} - ${3*vars.A} + ${2*vars.B}`, `5x = ${6*vars.C} - ${3*vars.A} - ${2*vars.B}`];
+                    state.stage = 0; // Finish
+                }
             } else {
-                let { A, B } = state.sharedVars;
-                question = isEn ? `\\text{Step 4: Solve } 3x - 2x = ${2 * B} - ${3 * A}` : `\\text{第四步: 求得 } x`;
-                let ans = 2 * B - 3 * A;
-                correct = `x = ${ans}`;
-                wrongs = [`x = ${ans + 5}`, `x = ${ans - 3}`, `x = ${Math.abs(ans) + 2}`];
+                let vars = state.sharedVars; // Finish Cross multiply
+                question = isEn ? `\\begin{gathered} \\text{From: } 3x - 2x = ${2 * vars.B} - ${3 * vars.A} \\\\ \\text{Step 4: Solve for } x \\end{gathered}` : `\\begin{gathered} \\text{承上: } 3x - 2x = ${2 * vars.B} - ${3 * vars.A} \\\\ \\text{第四步: 求得 } x \\end{gathered}`;
+                let ans = 2 * vars.B - 3 * vars.A;
+                correct = `x = ${ans}`; wrongs = [`x = ${ans + 5}`, `x = ${ans - 3}`, `x = ${Math.abs(ans) + 2}`];
                 state.stage = 0;
             }
         }
@@ -462,50 +470,46 @@ const TopicConfig = {
             if (state.stage === 0) { 
                 let subType = Math.random() < 0.5 ? 0 : 1;
                 if (subType === 0) {
-                    // Format: x = ay - c
-                    let a = this.randInt(2, 5);
-                    let c = this.randInt(10, 25);
-                    let yVal = this.randInt(-5, 6);
-                    if (yVal === 0) yVal = 3;
+                    let a = this.randInt(2, 5); let c = this.randInt(10, 25);
+                    let yVal = nonZeroRand(-5, 6);
                     state.sharedVars = { subType, a, c, yVal, part1: a * yVal };
-                    
                     question = isEn ? `\\text{Step 1: Evaluate } ${a}y \\text{ if } y = ${yVal}` : `\\text{第一步: 若 } y = ${yVal}, \\text{ 計算 } ${a}y`;
-                    correct = `${a * yVal}`;
-                    wrongs = [`${a + yVal}`, `${a}${Math.abs(yVal)}`, `${-(a * yVal)}`];
+                    correct = `${a * yVal}`; wrongs = [`${a + yVal}`, `${a}${Math.abs(yVal)}`, `${-(a * yVal)}`];
                 } else {
-                    // Format: z = ax + by (代入兩個數字)
-                    let a = this.randInt(2, 5);
-                    let b = this.randInt(-5, -2);
-                    let xVal = this.randInt(-4, 5); if (xVal === 0) xVal = 2;
-                    let yVal = this.randInt(2, 6);
+                    let a = this.randInt(2, 5); let b = this.randInt(-5, -2);
+                    let xVal = nonZeroRand(-4, 5); let yVal = this.randInt(2, 6);
                     state.sharedVars = { subType, a, b, xVal, yVal, part1: a * xVal };
-                    
                     question = isEn ? `\\text{Step 1: Evaluate } ${a}x \\text{ if } x = ${xVal}` : `\\text{第一步: 若 } x = ${xVal}, \\text{ 計算 } ${a}x`;
-                    correct = `${a * xVal}`;
-                    wrongs = [`${a + xVal}`, `${-(a * xVal)}`, `${a}${Math.abs(xVal)}`];
+                    correct = `${a * xVal}`; wrongs = [`${a + xVal}`, `${-(a * xVal)}`, `${a}${Math.abs(xVal)}`];
                 }
                 state.stage = 1;
             } else { 
                 let vars = state.sharedVars;
                 if (vars.subType === 0) {
-                    question = isEn ? `\\text{Step 2: Find } x = ${vars.a}y - ${vars.c} \\text{ given } ${vars.a}y = ${vars.part1}` : `\\text{第二步: 已知 } ${vars.a}y = ${vars.part1}, \\text{ 求 } x = ${vars.a}y - ${vars.c}`;
-                    let ans = vars.part1 - vars.c;
-                    correct = `${ans}`;
-                    wrongs = [`${vars.part1 + vars.c}`, `${-ans}`, `${ans + vars.a}`];
+                    question = isEn ? `\\begin{gathered} \\text{From: } ${vars.a}y = ${vars.part1} \\\\ \\text{Step 2: Find } x = ${vars.a}y - ${vars.c} \\end{gathered}` : `\\begin{gathered} \\text{承上: } ${vars.a}y = ${vars.part1} \\\\ \\text{第二步: 求 } x = ${vars.a}y - ${vars.c} \\end{gathered}`;
+                    let ans = vars.part1 - vars.c; correct = `${ans}`; wrongs = [`${vars.part1 + vars.c}`, `${-ans}`, `${ans + vars.a}`];
                 } else {
                     let bStr = vars.b < 0 ? `- ${Math.abs(vars.b)}` : `+ ${vars.b}`;
-                    question = isEn ? `\\text{Step 2: Find } z = ${vars.a}x ${bStr}y \\text{ if } ${vars.a}x = ${vars.part1}, y = ${vars.yVal}` : `\\text{第二步: 若 } ${vars.a}x = ${vars.part1}, y = ${vars.yVal}, \\text{ 求 } z = ${vars.a}x ${bStr}y`;
-                    let ans = vars.part1 + vars.b * vars.yVal;
-                    correct = `${ans}`;
-                    wrongs = [`${vars.part1 - vars.b * vars.yVal}`, `${ans + 2}`, `${-(ans)}`];
+                    question = isEn ? `\\begin{gathered} \\text{From: } ${vars.a}x = ${vars.part1} \\text{, and given } y = ${vars.yVal} \\\\ \\text{Step 2: Find } z = ${vars.a}x ${bStr}y \\end{gathered}` : `\\begin{gathered} \\text{承上: } ${vars.a}x = ${vars.part1} \\text{, 且已知 } y = ${vars.yVal} \\\\ \\text{第二步: 求 } z = ${vars.a}x ${bStr}y \\end{gathered}`;
+                    let ans = vars.part1 + vars.b * vars.yVal; correct = `${ans}`; wrongs = [`${vars.part1 - vars.b * vars.yVal}`, `${ans + 2}`, `${-(ans)}`];
                 }
                 state.stage = 0;
             }
         }
 
-        // Deduplicate and pad errors
         let uniqueWrongs = Array.from(new Set(wrongs)).filter(w => w !== correct);
-        while(uniqueWrongs.length < 3) uniqueWrongs.push(correct + " \\text{ (Err" + Math.floor(Math.random()*10) + ")}"); 
+        let fallbackCounter = 1;
+        while(uniqueWrongs.length < 3) {
+            // Intelligently mutate the correct answer by changing its first digit to create a plausible fake answer
+            let mutated = correct.replace(/\d+/, n => String(parseInt(n) + fallbackCounter));
+            
+            // Fallback in case mutation failed or generated a duplicate
+            if (mutated === correct || uniqueWrongs.includes(mutated)) {
+                mutated = `-${fallbackCounter}`; 
+            }
+            uniqueWrongs.push(mutated);
+            fallbackCounter++;
+        }
         
         let options = uniqueWrongs.slice(0, 3);
         const correctIdx = Math.floor(Math.random() * 4);
@@ -556,7 +560,7 @@ let joystickVector = { x: 0, y: 0 };
 const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
 let player, enemies = [], particles = [], projectiles = [], floatingTexts = [], kills = 0;
-let currentQuizzesData = [], currentUpgrades = [], quizResults = [null, null, null], activeQuizzes = 3, quizTimeLeft = 30;
+let currentQuizzesData = [], currentUpgrades = [], quizResults = [null, null, null], activeQuizzes = 3, quizTimeLeft = 60;
 
 const weaponDetails = {
     meteor: { name: '流星錘', color: '#00ffff', icon: '☄️', uiId: 'progress-meteor' },
@@ -638,7 +642,10 @@ class BasicBullet {
 class Player {
     constructor() {
         this.x = WORLD_SIZE.width / 2; this.y = WORLD_SIZE.height / 2;
-        this.radius = 16; this.speed = 220; this.maxHp = 100; this.hp = this.maxHp;
+        this.radius = 16; this.speed = 220; 
+        this.maxHp = 100; this.hp = this.maxHp;
+        this.timeSinceLastDamage = 0;
+        this.healRate = 5;
         this.level = 1; this.orbitAngle = 0; this.facing = 1;
         this.basicWeapon = { cooldown: 0.8, timer: 0, damage: 15 };
         this.weapons = {
@@ -663,6 +670,12 @@ class Player {
         this.x = Math.max(this.radius, Math.min(WORLD_SIZE.width - this.radius, this.x));
         this.y = Math.max(this.radius, Math.min(WORLD_SIZE.height - this.radius, this.y));
         this.orbitAngle += dt * 3; 
+
+        // Health Regeneration
+        this.timeSinceLastDamage += dt;
+        if (this.timeSinceLastDamage >= 1.0 && this.hp > 0 && this.hp < this.maxHp) {
+            this.hp = Math.min(this.maxHp, this.hp + this.healRate * dt);
+        }
 
         this.basicWeapon.timer += dt;
         if (this.basicWeapon.timer >= this.basicWeapon.cooldown) {
@@ -749,6 +762,7 @@ class Player {
 
     takeDamage(amount) {
         this.hp -= amount;
+        this.timeSinceLastDamage = 0; // Reset regeneration timer
         if (this.hp <= 0 && gameState === 'PLAYING') endGame(false);
     }
 
@@ -925,7 +939,7 @@ function startGame(lang = 'zh') {
     document.getElementById('lbl-firestorm').innerText = isEn ? 'Fire' : '火燒';
     document.getElementById('lbl-shockwave').innerText = isEn ? 'Shockwave' : '衝擊波';
     document.getElementById('lbl-quiz-title').innerText = isEn ? 'MIND TRIAL: LEVEL UP!' : '心智試煉 LEVEL UP!';
-    document.getElementById('lbl-quiz-desc').innerText = isEn ? 'Select correct steps within 30s! Get 3/3 right to unlock Shockwave!' : '30秒內選出正確概念步驟！三題全對即可觸發全屏衝擊波！';
+    document.getElementById('lbl-quiz-desc').innerText = isEn ? 'Select correct steps within 60s! Get 3/3 right to unlock Shockwave!' : '60秒內選出正確概念步驟！三題全對即可觸發全屏衝擊波！';
     document.getElementById('lbl-end-time').innerText = isEn ? 'Survival Time' : '存活時間';
     document.getElementById('lbl-end-kills').innerText = isEn ? 'Entities Defeated' : '消滅實體';
     document.getElementById('lbl-end-level').innerText = isEn ? 'System Rating' : '系統評級';
@@ -1041,10 +1055,10 @@ function triggerLevelUpQuiz() {
         card.append(title, qBox, grid); container.appendChild(card);
     }
 
-    quizTimeLeft = 30; quizTimerBar.style.width = '100%'; quizTimerText.innerText = '30s';
+    quizTimeLeft = 60; quizTimerBar.style.width = '100%'; quizTimerText.innerText = '60s';
     clearInterval(quizTimerInterval);
     quizTimerInterval = setInterval(() => {
-        quizTimeLeft--; quizTimerBar.style.width = `${(quizTimeLeft/30)*100}%`; quizTimerText.innerText = `${quizTimeLeft}s`;
+        quizTimeLeft--; quizTimerBar.style.width = `${(quizTimeLeft/60)*100}%`; quizTimerText.innerText = `${quizTimeLeft}s`;
         if (quizTimeLeft <= 10) { quizTimerBar.classList.add('from-red-600', 'to-orange-500'); quizTimerBar.classList.remove('from-fuchsia-600', 'to-pink-500'); quizTimerText.classList.add('text-red-300', 'animate-ping'); }
         else { quizTimerBar.classList.add('from-fuchsia-600', 'to-pink-500'); quizTimerBar.classList.remove('from-red-600', 'to-orange-500'); quizTimerText.classList.remove('text-red-300', 'animate-ping'); }
         if (quizTimeLeft <= 0) {
@@ -1091,6 +1105,14 @@ function endQuizPhase() {
         document.getElementById('lbl-shockwave-title').innerText = isEn ? '2s Shockwave Burst' : '2秒暴風衝擊波';
         document.getElementById('lbl-shockwave-sub').innerText = isEn ? 'Continuous blast wave' : '持續推開擊退強敵';
         overlay.classList.remove('hidden');
+
+        // 強制滾動到最上方，確保手機與 iPad 玩家能清楚看到獎勵選項
+        const levelupScreenElement = document.getElementById('levelup-screen');
+        if (levelupScreenElement) {
+            levelupScreenElement.scrollTo({ top: 0, behavior: 'smooth' });
+            // Fallback for older iOS Safari
+            levelupScreenElement.scrollTop = 0; 
+        }
 
         const resumeBattle = () => { overlay.classList.add('hidden'); levelupScreen.classList.add('hidden'); modalContainer.classList.add('hidden'); gameState = 'PLAYING'; lastTime = performance.now(); animationFrameId = requestAnimationFrame(gameLoop); };
         document.getElementById('btn-reward-heal').onclick = () => { player.hp = Math.min(player.maxHp, player.hp + 20); floatingTexts.push({ x: player.x, y: player.y - 40, text: isEn ? '+20 HP RESTORED!' : '+20 生命值回復！', life: 2.5, color: '#4ade80' }); resumeBattle(); };
